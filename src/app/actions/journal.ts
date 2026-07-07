@@ -18,6 +18,7 @@ const lessonSchema = z.object({
   date: z.string(),
   lessonNumber: z.number().min(1).max(8),
   topic: z.string().min(1),
+  subjectId: z.string().optional().nullable(),
   notes: z.string().optional(),
 });
 
@@ -119,6 +120,7 @@ export async function getLessons(groupId: string, termId?: string) {
     where,
     include: {
       teacher: { select: { id: true, name: true } },
+      subject: { select: { id: true, name: true } },
       records: {
         include: {
           student: { select: { id: true, firstName: true, lastName: true } },
@@ -187,6 +189,7 @@ export async function createLesson(data: FormData) {
     date: data.get("date"),
     lessonNumber: Number(data.get("lessonNumber")),
     topic: data.get("topic"),
+    subjectId: data.get("subjectId") || null,
     notes: data.get("notes") || undefined,
   });
 
@@ -250,6 +253,7 @@ export async function createLesson(data: FormData) {
       groupId: parsed.groupId,
       termId: term.id,
       teacherId: session.user.id,
+      subjectId: parsed.subjectId || null,
       date: new Date(parsed.date),
       lessonNumber: parsed.lessonNumber,
       topic: parsed.topic,

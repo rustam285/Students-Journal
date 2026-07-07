@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Save, Trash2, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Save, Trash2, BookOpen, ChevronDown, ChevronUp, Download } from "lucide-react";
 import {
   getTeacherGroups,
   getGroupStudents,
@@ -41,6 +41,8 @@ import {
   updateLesson,
   deleteLesson,
 } from "@/app/actions/journal";
+import { getSubjects } from "@/app/actions/subjects";
+import { getJournalExport } from "@/app/actions/export";
 import { LESSON_SCHEDULE, getLessonLabel } from "@/lib/constants";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -71,12 +73,20 @@ interface Lesson {
   lessonNumber: number;
   topic: string;
   notes: string | null;
+  subjectId?: string | null;
+  subject?: { id: string; name: string } | null;
   teacher?: { id: string; name: string };
   records: AttendanceRecord[];
 }
 
+interface Subject {
+  id: string;
+  name: string;
+}
+
 export default function JournalPage() {
   const [groups, setGroups] = useState<Group[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>("");
   const [students, setStudents] = useState<{ student: Student }[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -89,6 +99,7 @@ export default function JournalPage() {
 
   const [newDate, setNewDate] = useState("");
   const [newLessonNumber, setNewLessonNumber] = useState<string>("1");
+  const [newSubjectId, setNewSubjectId] = useState<string>("");
   const [newTopic, setNewTopic] = useState("");
   const [newNotes, setNewNotes] = useState("");
 
@@ -121,6 +132,15 @@ export default function JournalPage() {
     }
   }, [selectedGroup]);
 
+  const loadSubjects = useCallback(async () => {
+    try {
+      const data = await getSubjects();
+      setSubjects(data);
+    } catch (error) {
+      console.error("Failed to load subjects:", error);
+    }
+  }, []);
+
   const loadLessons = useCallback(async () => {
     if (!selectedGroup) return;
     try {
@@ -145,7 +165,8 @@ export default function JournalPage() {
 
   useEffect(() => {
     loadGroups();
-  }, [loadGroups]);
+    loadSubjects();
+  }, [loadGroups, loadSubjects]);
 
   useEffect(() => {
     if (selectedGroup) {
@@ -212,6 +233,7 @@ export default function JournalPage() {
     formData.append("date", newDate);
     formData.append("lessonNumber", newLessonNumber);
     formData.append("topic", newTopic);
+    if (newSubjectId) formData.append("subjectId", newSubjectId);
     if (newNotes) formData.append("notes", newNotes);
     if (forceCreate) formData.append("forceCreate", "true");
 
@@ -237,6 +259,7 @@ export default function JournalPage() {
     formData.append("date", newDate);
     formData.append("lessonNumber", newLessonNumber);
     formData.append("topic", newTopic);
+    if (newSubjectId) formData.append("subjectId", newSubjectId);
     if (newNotes) formData.append("notes", newNotes);
     formData.append("forceCreate", "true");
 
@@ -306,6 +329,46 @@ export default function JournalPage() {
     });
   }
 
+  async function handleExport() {
+    if (!selectedGroup) return;
+
+    try {
+      const data = await getJournalExport(selectedGroup);
+
+      const rows: string[][] = [];
+
+      const header = ["Студент", ...data.lessons.map((l) => `${l.date} (${l.lessonNumber}п.) ${l.topic}`)];
+      rows.push(header);
+
+      for (const student of data.students) {
+        const row = [student.name];
+        for (const lesson of data.lessons) {
+          const record = lesson.records.find((r) => r.studentId === student.id);
+          if (record) {
+            const status = record.status === "PRESENT" ? "П" : record.status === "ABSENT" ? "Н" : "О";
+            const grade = record.grade ? ` (${record.grade})` : "";
+            row.push(`${status}${grade}`);
+          } else {
+            row.push("—");
+          }
+        }
+        rows.push(row);
+      }
+
+      const csv = rows.map((r) => r.join(";")).join("\n");
+      const BOM = "\uFEFF";
+      const blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `journal_${data.groupName}_${new Date().toISOString().split("T")[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Ошибка экспорта");
+    }
+  }
+
   function getStatusBadge(status: string) {
     switch (status) {
       case "PRESENT":
@@ -327,13 +390,18 @@ export default function JournalPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Журнал</h1>
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreateDialog} disabled={!selectedGroup}>
-              <Plus className="mr-2 h-4 w-4" />
-              Новое занятие
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport} disabled={!selectedGroup}>
+            <Download className="mr-2 h-4 w-4" />
+            Экспорт CSV
+          </Button>
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openCreateDialog} disabled={!selectedGroup}>
+                <Plus className="mr-2 h-4 w-4" />
+                Новое занятие
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Создать занятие</DialogTitle>
@@ -370,6 +438,27 @@ export default function JournalPage() {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="subject">Предмет</Label>
+                <Select value={newSubjectId} onValueChange={setNewSubjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите предмет (необязательно)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Без предмета</SelectItem>
+                    {subjects.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {subjects.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Нет предметов. <a href="/subjects" className="underline">Добавить</a>
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="topic">Тема занятия</Label>
                 <Input
                   id="topic"
@@ -396,6 +485,7 @@ export default function JournalPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Dialog open={warningDialog.open} onOpenChange={(open) => setWarningDialog({ ...warningDialog, open })}>
@@ -498,9 +588,24 @@ export default function JournalPage() {
                 Редактирование: {format(new Date(editingLesson.date), "d MMMM yyyy", { locale: ru })},{" "}
                 {getLessonLabel(editingLesson.lessonNumber)}
               </span>
-              <Button variant="outline" onClick={() => setEditingLesson(null)}>
-                Отмена
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    const next = new Map(editRecords);
+                    next.forEach((record, key) => {
+                      next.set(key, { ...record, status: "PRESENT" });
+                    });
+                    setEditRecords(next);
+                  }}
+                >
+                  Все присутствуют
+                </Button>
+                <Button variant="outline" onClick={() => setEditingLesson(null)}>
+                  Отмена
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -608,6 +713,11 @@ export default function JournalPage() {
                       </div>
                       <div>
                         <div className="font-medium">{lesson.topic}</div>
+                        {lesson.subject && (
+                          <Badge variant="secondary" className="mt-1">
+                            {lesson.subject.name}
+                          </Badge>
+                        )}
                         {lesson.teacher && (
                           <div className="text-sm text-muted-foreground">
                             Преподаватель: {lesson.teacher.name}

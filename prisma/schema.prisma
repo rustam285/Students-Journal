@@ -38,6 +38,7 @@ model User {
   teacherGroups       TeacherGroup[]
   homeroomOf          Group[]   @relation("HomeroomTeacher")
   lessonsCreated      Lesson[]
+  subjects            Subject[]
   groupAccessRequests GroupAccessRequest[]
   auditLogs           AuditLog[]
   createdAt           DateTime  @default(now())
@@ -105,6 +106,7 @@ model Lesson {
   groupId      String
   termId       String
   teacherId    String
+  subjectId    String?
   date         DateTime
   lessonNumber Int      @default(1)
   topic        String
@@ -112,6 +114,7 @@ model Lesson {
   group        Group    @relation(fields: [groupId], references: [id])
   term         Term     @relation(fields: [termId], references: [id])
   teacher      User     @relation(fields: [teacherId], references: [id])
+  subject      Subject? @relation(fields: [subjectId], references: [id])
   records      AttendanceRecord[]
   deletedAt    DateTime?
   @@index([groupId, date])
@@ -156,4 +159,14 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([userId])
   @@index([createdAt])
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  name      String
+  teacherId String
+  teacher   User     @relation(fields: [teacherId], references: [id])
+  lessons   Lesson[]
+  createdAt DateTime @default(now())
+  @@unique([name, teacherId])
 }

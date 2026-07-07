@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { Sidebar } from "@/components/sidebar";
+import { AppShell } from "@/components/app-shell";
 
 export default async function ProtectedLayout({
   children,
@@ -18,13 +18,8 @@ export default async function ProtectedLayout({
   }
 
   return (
-    <div className="flex h-screen">
-      <Sidebar user={session.user} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="container p-6">
-          {children}
-        </div>
-      </main>
-    </div>
+    <AppShell user={session.user}>
+      {children}
+    </AppShell>
   );
 }

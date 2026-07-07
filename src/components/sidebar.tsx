@@ -15,6 +15,8 @@ import {
   UserCog,
   FileUp,
   ScrollText,
+  Library,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -62,10 +64,22 @@ const getNavItems = (role: string) => {
       roles: ["ADMIN", "TEACHER"],
     },
     {
+      title: "Предметы",
+      href: "/subjects",
+      icon: Library,
+      roles: ["TEACHER"],
+    },
+    {
       title: "Профиль",
       href: "/profile",
       icon: UserCircle,
       roles: ["ADMIN", "TEACHER", "STUDENT"],
+    },
+    {
+      title: "Моя успеваемость",
+      href: "/my-records",
+      icon: ClipboardList,
+      roles: ["STUDENT"],
     },
   ];
 
