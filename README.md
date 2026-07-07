@@ -29,14 +29,13 @@ pnpm dev
 
 Открой http://localhost:3000 в браузере.
 
-## Тестовые аккаунты
+## Тестовый аккаунт
 
-| Роль      | Email                  | Пароль       |
-|-----------|------------------------|--------------|
-| Admin     | admin@csu.ru           | password123  |
-| Teacher   | ivanov@csu.ru          | password123  |
-| Student   | petrova@student.csu.ru | password123  |
-| Student   | sidorov@student.csu.ru | password123  |
+| Роль      | Email          | Пароль    |
+|-----------|----------------|-----------|
+| Admin     | admin@csu.ru   | admin123  |
+
+Остальных пользователей (преподавателей, студентов) добавляет администратор через интерфейс.
 
 ## Команды
 

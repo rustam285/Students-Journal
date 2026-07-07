@@ -87,15 +87,6 @@ export default function LoginPage() {
               {loading ? "Вход..." : "Войти"}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-muted rounded-lg text-sm">
-            <p className="font-medium mb-2">Тестовые аккаунты:</p>
-            <ul className="space-y-1 text-muted-foreground">
-              <li>Admin: admin@csu.ru / password123</li>
-              <li>Teacher: ivanov@csu.ru / password123</li>
-              <li>Student: petrova@student.csu.ru / password123</li>
-            </ul>
-          </div>
         </CardContent>
       </Card>
     </main>
