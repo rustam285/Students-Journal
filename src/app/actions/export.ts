@@ -21,6 +21,18 @@ export async function getJournalExport(groupId: string, termId?: string) {
     if (!hasAccess) throw new Error("Forbidden");
   }
 
+  if (session.user.role === "STUDENT") {
+  const studentProfile = await prisma.student.findFirst({
+    where: { userId: session.user.id, deletedAt: null },
+  });
+  if (!studentProfile) throw new Error("Forbidden");
+
+  const isMember = await prisma.studentGroup.findFirst({
+    where: { studentId: studentProfile.id, groupId },
+  });
+  if (!isMember) throw new Error("Forbidden");
+}
+
   const where: Record<string, unknown> = { groupId, deletedAt: null };
   if (termId) where.termId = termId;
 

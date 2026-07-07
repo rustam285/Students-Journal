@@ -28,13 +28,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
     }
 
-    if (!user.mustChangePassword && oldPassword) {
+    if (!user.mustChangePassword) {
+      if (!oldPassword) {
+        return NextResponse.json({ error: "Укажите текущий пароль" }, { status: 400 });
+      }
       const isValid = await compare(oldPassword, user.passwordHash);
       if (!isValid) {
-        return NextResponse.json(
-          { error: "Неверный текущий пароль" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Неверный текущий пароль" }, { status: 400 });
       }
     }
 

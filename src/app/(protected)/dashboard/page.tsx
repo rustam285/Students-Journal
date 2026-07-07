@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Users, GraduationCap, BookOpen, TrendingUp, Calendar } from "lucide-react";
 import {
   PieChart,
@@ -31,7 +32,13 @@ import {
 import {
   getAttendanceStats,
   getGradeDynamics,
+  getTopStudents,
+  getLessonNumberStats,
+  getGradeDistribution,
+  getAtRiskStudents,
+  getGroupComparison,
 } from "@/app/actions/stats";
+import { useSession } from "next-auth/react";
 
 interface DashboardStats {
   groups: number;
@@ -75,6 +82,9 @@ function savePeriodToStorage(period: Period, startDate: string, endDate: string)
 }
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
+  const isTeacherOrAdmin = ["ADMIN", "TEACHER"].includes(session?.user?.role || "");
+
   const [period, setPeriod] = useState<Period>("month");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -83,6 +93,12 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({ groups: 0, students: 0, lessons: 0, records: 0 });
   const [userName, setUserName] = useState<string>("");
   const [loading, setLoading] = useState(true);
+
+  const [topStudents, setTopStudents] = useState<{ top: { name: string; avgGrade: number }[]; bottom: { name: string; avgGrade: number }[] }>({ top: [], bottom: [] });
+  const [lessonNumberStats, setLessonNumberStats] = useState<{ lessonNumber: number; label: string; absenceRate: number }[]>([]);
+  const [gradeDistribution, setGradeDistribution] = useState<{ grade: number; count: number }[]>([]);
+  const [atRiskStudents, setAtRiskStudents] = useState<{ name: string; absenceRate: number; avgGrade: number | null }[]>([]);
+  const [groupComparison, setGroupComparison] = useState<{ name: string; studentsCount: number; attendanceRate: number; avgGrade: number | null }[]>([]);
 
   useEffect(() => {
     const saved = loadPeriodFromStorage();
@@ -97,19 +113,39 @@ export default function DashboardPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [attendance, grades] = await Promise.all([
+      const promises: Promise<unknown>[] = [
         getAttendanceStats(period, startDate, endDate),
         getGradeDynamics(period, startDate, endDate),
-      ]);
+      ];
 
-      setAttendanceData(attendance);
-      setGradeData(grades);
+      if (isTeacherOrAdmin) {
+        promises.push(
+          getTopStudents(period, startDate, endDate, 5),
+          getLessonNumberStats(period, startDate, endDate),
+          getGradeDistribution(period, startDate, endDate),
+          getAtRiskStudents(period, startDate, endDate, 30, 3),
+          getGroupComparison(period, startDate, endDate)
+        );
+      }
+
+      const results = await Promise.all(promises);
+
+      setAttendanceData(results[0] as typeof attendanceData);
+      setGradeData(results[1] as typeof gradeData);
+
+      if (isTeacherOrAdmin && results.length > 2) {
+        setTopStudents(results[2] as typeof topStudents);
+        setLessonNumberStats(results[3] as typeof lessonNumberStats);
+        setGradeDistribution(results[4] as typeof gradeDistribution);
+        setAtRiskStudents(results[5] as typeof atRiskStudents);
+        setGroupComparison(results[6] as typeof groupComparison);
+      }
     } catch (error) {
       console.error("Failed to load stats:", error);
     } finally {
       setLoading(false);
     }
-  }, [period, startDate, endDate]);
+  }, [period, startDate, endDate, isTeacherOrAdmin]);
 
   useEffect(() => {
     loadDashboardStats();
@@ -332,6 +368,173 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {isTeacherOrAdmin && (
+        <>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Пропуски по парам</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {lessonNumberStats.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Нет данных</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={lessonNumberStats}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="label" />
+                      <YAxis unit="%" />
+                      <Tooltip formatter={(value: number) => [`${value}%`, "Пропуски"]} />
+                      <Bar dataKey="absenceRate" name="% пропусков" fill="#ef4444">
+                        {lessonNumberStats.map((entry, index) => (
+                          <Cell key={index} fill={entry.absenceRate > 30 ? "#ef4444" : entry.absenceRate > 15 ? "#eab308" : "#22c55e"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Распределение оценок</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {gradeDistribution.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Нет данных</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={gradeDistribution}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="grade" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="count" name="Количество" fill="#8884d8">
+                        {gradeDistribution.map((entry, index) => (
+                          <Cell key={index} fill={["#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e"][index]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Сравнение групп</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {groupComparison.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Нет данных</p>
+                ) : (
+                  <div className="space-y-3">
+                    {groupComparison.map((g) => (
+                      <div key={g.name} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div>
+                          <div className="font-medium">{g.name}</div>
+                          <div className="text-sm text-muted-foreground">{g.studentsCount} студентов</div>
+                        </div>
+                        <div className="flex gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Посещ.:</span>{" "}
+                            <span className={g.attendanceRate >= 80 ? "text-green-600" : g.attendanceRate >= 60 ? "text-yellow-600" : "text-red-600"}>
+                              {g.attendanceRate}%
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Ср. балл:</span>{" "}
+                            <span className="font-medium">{g.avgGrade || "—"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-red-600">Студенты в зоне риска</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {atRiskStudents.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Нет студентов в зоне риска</p>
+                ) : (
+                  <div className="space-y-2">
+                    {atRiskStudents.map((s) => (
+                      <div key={s.name} className="flex items-center justify-between p-2 bg-red-50 rounded">
+                        <span className="font-medium">{s.name}</span>
+                        <div className="flex gap-3 text-sm">
+                          {s.absenceRate >= 30 && (
+                            <span className="text-red-600">Пропуски: {s.absenceRate}%</span>
+                          )}
+                          {s.avgGrade !== null && s.avgGrade < 3 && (
+                            <span className="text-red-600">Ср. балл: {s.avgGrade}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-green-600">Лучшие студенты</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {topStudents.top.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Нет данных</p>
+                ) : (
+                  <div className="space-y-2">
+                    {topStudents.top.map((s, i) => (
+                      <div key={s.name} className="flex items-center justify-between p-2 bg-green-50 rounded">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold text-green-600">{i + 1}.</span>
+                          <span className="font-medium">{s.name}</span>
+                        </div>
+                        <Badge variant="default" className="bg-green-600">{s.avgGrade}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-orange-600">Отстающие студенты</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {topStudents.bottom.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Нет данных</p>
+                ) : (
+                  <div className="space-y-2">
+                    {topStudents.bottom.map((s, i) => (
+                      <div key={s.name} className="flex items-center justify-between p-2 bg-orange-50 rounded">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold text-orange-600">{i + 1}.</span>
+                          <span className="font-medium">{s.name}</span>
+                        </div>
+                        <Badge variant="destructive">{s.avgGrade}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 }

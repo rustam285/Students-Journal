@@ -301,7 +301,20 @@ export async function updateAttendance(
   if (session.user.role === "TEACHER" && lesson.teacherId !== session.user.id) {
     throw new Error("Forbidden");
   }
+  
+  const groupStudentIds = new Set(
+    (await prisma.studentGroup.findMany({
+      where: { groupId: lesson.groupId },
+      select: { studentId: true },
+    })).map((s) => s.studentId)
+  );
 
+  for (const record of records) {
+    if (!groupStudentIds.has(record.studentId)) {
+      throw new Error("Student not in this group");
+    }
+  }
+  
   for (const record of records) {
     const parsed = attendanceSchema.parse(record);
 

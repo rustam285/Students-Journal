@@ -37,7 +37,7 @@ export async function PATCH(
     }
 
     await prisma.user.update({
-      where: { id: params.id },
+      where: { id: params.id, role: "TEACHER"},
       data: { name, email },
     });
 
@@ -61,7 +61,7 @@ export async function DELETE(
     }
 
     const teacher = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id: params.id, role: "TEACHER"},
       include: {
         lessonsCreated: { where: { deletedAt: null } },
       },
@@ -77,7 +77,7 @@ export async function DELETE(
     const email = `${teacher.email}_deleted_${teacher.id}`;
 
     await prisma.user.update({
-      where: { id: params.id },
+      where: { id: params.id, role: "TEACHER"},
       data: {
         deletedAt: new Date(),
         email,

@@ -40,6 +40,10 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!["TEACHER", "STUDENT"].includes(role)) {
+      return NextResponse.json({ error: "Недопустимая роль" }, { status: 400 });
+    }
+
     const password = generatePassword();
     const passwordHash = await hash(password, 10);
 
