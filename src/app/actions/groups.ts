@@ -16,8 +16,18 @@ export async function getGroups() {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
 
+  const where: Record<string, unknown> = { deletedAt: null };
+
+  if (session.user.role === "STUDENT") {
+    const studentProfile = await prisma.student.findFirst({
+      where: { userId: session.user.id, deletedAt: null },
+    });
+    if (!studentProfile) return [];
+    where.students = { some: { studentId: studentProfile.id } };
+  }
+
   return prisma.group.findMany({
-    where: { deletedAt: null },
+    where,
     include: {
       homeroomTeacher: { select: { id: true, name: true } },
       additionalTeachers: {

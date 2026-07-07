@@ -83,6 +83,20 @@ export async function getStudent(id: string) {
     throw new Error("Forbidden");
   }
 
+  if (session.user.role === "TEACHER") {
+    const hasAccess = await prisma.group.findFirst({
+      where: {
+        deletedAt: null,
+        students: { some: { studentId: student.id } },
+        OR: [
+          { homeroomTeacherId: session.user.id },
+          { additionalTeachers: { some: { teacherId: session.user.id } } },
+        ],
+      },
+    });
+    if (!hasAccess) throw new Error("Forbidden");
+  }
+
   return student;
 }
 
