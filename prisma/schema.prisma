@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  name                String
+  email               String    @unique
+  passwordHash        String
+  mustChangePassword  Boolean   @default(true)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  role                Role      @default(STUDENT)
+  studentProfile      Student?
+  teacherGroups       TeacherGroup[]
+  homeroomOf          Group[]   @relation("HomeroomTeacher")
+  lessonsCreated      Lesson[]
+  groupAccessRequests GroupAccessRequest[]
+  auditLogs           AuditLog[]
+  createdAt           DateTime  @default(now())
+  deletedAt           DateTime?
+  @@index([email])
+}
+
+model Term {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+  lessons   Lesson[]
+}
+
+model Group {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  homeroomTeacherId String?
+  homeroomTeacher   User?    @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
+  students          StudentGroup[]
+  lessons           Lesson[]
+  additionalTeachers TeacherGroup[]
+  accessRequests    GroupAccessRequest[]
+  deletedAt         DateTime?
+}
+
+model TeacherGroup {
+  id        String  @id @default(cuid())
+  teacherId String
+  groupId   String
+  teacher   User    @relation(fields: [teacherId], references: [id])
+  group     Group   @relation(fields: [groupId], references: [id])
+  @@unique([teacherId, groupId])
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  userId    String?  @unique
+  user      User?    @relation(fields: [userId], references: [id])
+  groups    StudentGroup[]
+  records   AttendanceRecord[]
+  deletedAt DateTime?
+}
+
+model StudentGroup {
+  id        String  @id @default(cuid())
+  studentId String
+  groupId   String
+  student   Student @relation(fields: [studentId], references: [id])
+  group     Group   @relation(fields: [groupId], references: [id])
+  @@unique([studentId, groupId])
+  @@index([groupId])
+  @@index([studentId])
+}
+
+model Lesson {
+  id           String   @id @default(cuid())
+  groupId      String
+  termId       String
+  teacherId    String
+  date         DateTime
+  lessonNumber Int      @default(1)
+  topic        String
+  notes        String?
+  group        Group    @relation(fields: [groupId], references: [id])
+  term         Term     @relation(fields: [termId], references: [id])
+  teacher      User     @relation(fields: [teacherId], references: [id])
+  records      AttendanceRecord[]
+  deletedAt    DateTime?
+  @@index([groupId, date])
+  @@index([termId])
+}
+
+model AttendanceRecord {
+  id         String           @id @default(cuid())
+  lessonId   String
+  studentId  String
+  status     AttendanceStatus @default(PRESENT)
+  grade      Int?
+  comment    String?
+  lesson     Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student    Student          @relation(fields: [studentId], references: [id])
+  deletedAt  DateTime?
+  @@unique([lessonId, studentId])
+  @@index([studentId])
+  @@index([lessonId])
+}
+
+model GroupAccessRequest {
+  id        String        @id @default(cuid())
+  teacherId String
+  groupId   String
+  status    RequestStatus @default(PENDING)
+  teacher   User          @relation(fields: [teacherId], references: [id])
+  group     Group         @relation(fields: [groupId], references: [id])
+  createdAt DateTime      @default(now())
+  @@unique([teacherId, groupId, status])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String
+  changes   String?
+  createdAt DateTime @default(now())
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
