@@ -85,9 +85,33 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const isTeacherOrAdmin = ["ADMIN", "TEACHER"].includes(session?.user?.role || "");
 
-  const [period, setPeriod] = useState<Period>("month");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [period, setPeriod] = useState<Period>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return JSON.parse(saved).period || "month";
+      } catch {}
+    }
+    return "month";
+  });
+  const [startDate, setStartDate] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return JSON.parse(saved).startDate || "";
+      } catch {}
+    }
+    return "";
+  });
+  const [endDate, setEndDate] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return JSON.parse(saved).endDate || "";
+      } catch {}
+    }
+    return "";
+  });
   const [attendanceData, setAttendanceData] = useState<{ name: string; PRESENT: number; ABSENT: number; LATE: number; total: number }[]>([]);
   const [gradeData, setGradeData] = useState<{ date: string; grade: number | null }[]>([]);
   const [stats, setStats] = useState<DashboardStats>({ groups: 0, students: 0, lessons: 0, records: 0 });
@@ -99,13 +123,6 @@ export default function DashboardPage() {
   const [gradeDistribution, setGradeDistribution] = useState<{ grade: number; count: number }[]>([]);
   const [atRiskStudents, setAtRiskStudents] = useState<{ name: string; absenceRate: number; avgGrade: number | null }[]>([]);
   const [groupComparison, setGroupComparison] = useState<{ name: string; studentsCount: number; attendanceRate: number; avgGrade: number | null }[]>([]);
-
-  useEffect(() => {
-    const saved = loadPeriodFromStorage();
-    setPeriod(saved.period);
-    setStartDate(saved.startDate);
-    setEndDate(saved.endDate);
-  }, []);
 
   useEffect(() => {
     savePeriodToStorage(period, startDate, endDate);
