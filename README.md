@@ -13,7 +13,7 @@ cd Students-Journal
 pnpm install
 
 # 3. Сгенерировать NEXTAUTH_SECRET
-openssl rand -base64 32
+[Convert]::ToBase64String((1..32 | ForEach-Object { [byte](Get-Random -Minimum 0 -Maximum 256) }))
 
 # 4. Создать .env из примера и вставить секрет
 cp .env.example .env
