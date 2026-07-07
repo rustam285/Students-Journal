@@ -34,7 +34,7 @@ export async function GET() {
 
       const groupIds = teacherGroups.map((g) => g.id);
 
-      const [groups, students, lessons] = await Promise.all([
+      const [groups, students, lessons, records] = await Promise.all([
         Promise.resolve(teacherGroups.length),
         prisma.student.count({
           where: {
@@ -45,8 +45,14 @@ export async function GET() {
         prisma.lesson.count({
           where: { teacherId: session.user.id, deletedAt: null },
         }),
+        prisma.attendanceRecord.count({
+          where: {
+            deletedAt: null,
+            lesson: { teacherId: session.user.id, deletedAt: null },
+          },
+        }),
       ]);
-      stats = { groups, students, lessons, records: 0 };
+      stats = { groups, students, lessons, records };
     } else if (role === "STUDENT") {
       const studentProfile = await prisma.student.findFirst({
         where: { userId: session.user.id, deletedAt: null },
