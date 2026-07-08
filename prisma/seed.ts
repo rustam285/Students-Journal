@@ -6,6 +6,16 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database...');
 
+  // Очищаем данные
+  await prisma.attendanceRecord.deleteMany();
+  await prisma.lesson.deleteMany();
+  await prisma.studentGroup.deleteMany();
+  await prisma.teacherGroup.deleteMany();
+  await prisma.student.deleteMany();
+  await prisma.group.deleteMany();
+  await prisma.term.deleteMany();
+  await prisma.user.deleteMany();
+
   const password = await hash('admin123', 10);
 
   const admin = await prisma.user.create({
@@ -18,11 +28,37 @@ async function main() {
     },
   });
 
+  // Создаём группу ТФИ-101 с одним студентом
+  const group = await prisma.group.create({
+    data: {
+      name: 'ТФИ-101',
+      description: 'Технологии будущего, 1 курс, 1 группа',
+    },
+  });
+
+  const student = await prisma.student.create({
+    data: {
+      firstName: 'Иван',
+      lastName: 'Петров',
+      email: 'petrov@student.csu.ru',
+      phone: '+7(900)123-45-67',
+    },
+  });
+
+  await prisma.studentGroup.create({
+    data: {
+      studentId: student.id,
+      groupId: group.id,
+    },
+  });
+
   console.log('✅ Seed completed!');
   console.log('');
   console.log('📋 Admin account:');
   console.log(`   Email: ${admin.email}`);
   console.log(`   Password: admin123`);
+  console.log('');
+  console.log(`📚 Created: Group "${group.name}", Student "${student.lastName} ${student.firstName}"`);
   console.log('');
   console.log('⚠️  Смените пароль после первого входа!');
 }

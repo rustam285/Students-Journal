@@ -61,19 +61,6 @@ const COLORS = ["#22c55e", "#ef4444", "#eab308"];
 
 const STORAGE_KEY = "dashboard-period";
 
-function loadPeriodFromStorage(): { period: Period; startDate: string; endDate: string } {
-  if (typeof window === "undefined") {
-    return { period: "month", startDate: "", endDate: "" };
-  }
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch {}
-  return { period: "month", startDate: "", endDate: "" };
-}
-
 function savePeriodToStorage(period: Period, startDate: string, endDate: string) {
   if (typeof window === "undefined") return;
   try {

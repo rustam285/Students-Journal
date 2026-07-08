@@ -63,6 +63,7 @@ interface AttendanceRecord {
   studentId: string;
   status: "PRESENT" | "ABSENT" | "LATE";
   grade: number | null;
+  bonusPoints: number | null;
   comment: string | null;
   student: Student;
 }
@@ -104,7 +105,7 @@ export default function JournalPage() {
   const [newNotes, setNewNotes] = useState("");
 
   const [editRecords, setEditRecords] = useState<
-    Map<string, { status: "PRESENT" | "ABSENT" | "LATE"; grade: string; comment: string }>
+    Map<string, { status: "PRESENT" | "ABSENT" | "LATE"; grade: string; bonusPoints: string; comment: string }>
   >(new Map());
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [warningDialog, setWarningDialog] = useState<{ open: boolean; message: string }>({
@@ -190,6 +191,7 @@ export default function JournalPage() {
       recordsMap.set(r.studentId, {
         status: r.status,
         grade: r.grade?.toString() || "",
+        bonusPoints: r.bonusPoints?.toString() || "",
         comment: r.comment || "",
       });
     });
@@ -198,6 +200,7 @@ export default function JournalPage() {
         recordsMap.set(s.student.id, {
           status: "PRESENT",
           grade: "",
+          bonusPoints: "",
           comment: "",
         });
       }
@@ -215,12 +218,12 @@ export default function JournalPage() {
 
   function updateRecordField(
     studentId: string,
-    field: "status" | "grade" | "comment",
+    field: "status" | "grade" | "bonusPoints" | "comment",
     value: string
   ) {
     setEditRecords((prev) => {
       const next = new Map(prev);
-      const record = next.get(studentId) || { status: "PRESENT", grade: "", comment: "" };
+      const record = next.get(studentId) || { status: "PRESENT", grade: "", bonusPoints: "", comment: "" };
       next.set(studentId, { ...record, [field]: value });
       return next;
     });
@@ -282,6 +285,7 @@ export default function JournalPage() {
       studentId,
       status: data.status,
       grade: data.grade ? parseInt(data.grade) : null,
+      bonusPoints: data.bonusPoints ? parseInt(data.bonusPoints) : null,
       comment: data.comment || null,
     }));
 
@@ -617,7 +621,8 @@ export default function JournalPage() {
                 <TableRow>
                   <TableHead>Студент</TableHead>
                   <TableHead>Статус</TableHead>
-                  <TableHead>Оценка (1-5)</TableHead>
+                  <TableHead>Оценка (1-100)</TableHead>
+                  <TableHead>Бонус</TableHead>
                   <TableHead>Комментарий</TableHead>
                 </TableRow>
               </TableHeader>
@@ -626,6 +631,7 @@ export default function JournalPage() {
                   const record = editRecords.get(s.student.id) || {
                     status: "PRESENT",
                     grade: "",
+                    bonusPoints: "",
                     comment: "",
                   };
                   return (
@@ -652,10 +658,21 @@ export default function JournalPage() {
                         <Input
                           type="number"
                           min="1"
-                          max="5"
+                          max="100"
                           className="w-20"
                           value={record.grade}
                           onChange={(e) => updateRecordField(s.student.id, "grade", e.target.value)}
+                          placeholder="—"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="w-20"
+                          value={record.bonusPoints}
+                          onChange={(e) => updateRecordField(s.student.id, "bonusPoints", e.target.value)}
                           placeholder="—"
                         />
                       </TableCell>
@@ -803,6 +820,7 @@ export default function JournalPage() {
                             <TableHead>Студент</TableHead>
                             <TableHead>Статус</TableHead>
                             <TableHead>Оценка</TableHead>
+                            <TableHead>Бонус</TableHead>
                             <TableHead>Комментарий</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -814,6 +832,7 @@ export default function JournalPage() {
                               </TableCell>
                               <TableCell>{getStatusBadge(record.status)}</TableCell>
                               <TableCell>{record.grade || "—"}</TableCell>
+                              <TableCell>{record.bonusPoints || "—"}</TableCell>
                               <TableCell className="text-muted-foreground">
                                 {record.comment || "—"}
                               </TableCell>

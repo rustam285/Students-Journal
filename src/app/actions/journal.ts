@@ -9,7 +9,8 @@ import { z } from "zod";
 const attendanceSchema = z.object({
   studentId: z.string(),
   status: z.enum(["PRESENT", "ABSENT", "LATE"]),
-  grade: z.number().min(1).max(5).nullable().optional(),
+  grade: z.number().min(1).max(100).nullable().optional(),
+  bonusPoints: z.number().min(0).max(100).nullable().optional(),
   comment: z.string().nullable().optional(),
 });
 
@@ -328,6 +329,7 @@ export async function updateAttendance(
       update: {
         status: parsed.status,
         grade: parsed.grade ?? null,
+        bonusPoints: parsed.bonusPoints ?? null,
         comment: parsed.comment ?? null,
       },
       create: {
@@ -335,6 +337,7 @@ export async function updateAttendance(
         studentId: parsed.studentId,
         status: parsed.status,
         grade: parsed.grade ?? null,
+        bonusPoints: parsed.bonusPoints ?? null,
         comment: parsed.comment ?? null,
       },
     });

@@ -122,15 +122,16 @@ model Lesson {
 }
 
 model AttendanceRecord {
-  id         String           @id @default(cuid())
-  lessonId   String
-  studentId  String
-  status     AttendanceStatus @default(PRESENT)
-  grade      Int?
-  comment    String?
-  lesson     Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  student    Student          @relation(fields: [studentId], references: [id])
-  deletedAt  DateTime?
+  id          String           @id @default(cuid())
+  lessonId    String
+  studentId   String
+  status      AttendanceStatus @default(PRESENT)
+  grade       Int?
+  bonusPoints Int?
+  comment     String?
+  lesson      Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student     Student          @relation(fields: [studentId], references: [id])
+  deletedAt   DateTime?
   @@unique([lessonId, studentId])
   @@index([studentId])
   @@index([lessonId])
