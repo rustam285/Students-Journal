@@ -17,6 +17,7 @@ import {
   ScrollText,
   Library,
   ClipboardList,
+  CalendarRange,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,12 @@ const getNavItems = (role: string) => {
   ];
 
   if (role === "ADMIN") {
+    items.push({
+      title: "Учебные периоды",
+      href: "/terms",
+      icon: CalendarRange,
+      roles: ["ADMIN"],
+    });
     items.push({
       title: "Преподаватели",
       href: "/teachers",
