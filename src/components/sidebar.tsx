@@ -68,7 +68,7 @@ const getNavItems = (role: string) => {
       title: "Предметы",
       href: "/subjects",
       icon: Library,
-      roles: ["TEACHER"],
+      roles: ["ADMIN", "TEACHER"],
     },
     {
       title: "Профиль",

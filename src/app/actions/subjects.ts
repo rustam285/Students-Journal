@@ -8,6 +8,15 @@ export async function getSubjects() {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
 
+  if (session.user.role === "ADMIN") {
+    return prisma.subject.findMany({
+      orderBy: { name: "asc" },
+      include: {
+        teacher: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   return prisma.subject.findMany({
     where: { teacherId: session.user.id },
     orderBy: { name: "asc" },
