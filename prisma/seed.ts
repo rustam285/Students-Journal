@@ -33,7 +33,7 @@ async function main() {
     data: {
       name: '2025-2026',
       startDate: new Date('2025-09-01'),
-      endDate: new Date('2026-01-31'),
+      endDate: new Date('2026-08-31'),
       isActive: true,
     },
   });
