@@ -18,6 +18,7 @@
 # misc
 .DS_Store
 *.pem
+/.mimosa/
 
 # debug
 npm-debug.log*
@@ -34,6 +35,12 @@ yarn-error.log*
 *.db-journal
 prisma/dev.db
 prisma/dev.db-journal
+
+# встроенный PostgreSQL (создаётся автоматически)
+/pgdata/
+
+# сюда можно положить старую SQLite-БД для миграции (не коммитится)
+/old/
 
 # vercel
 .vercel

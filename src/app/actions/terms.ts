@@ -5,11 +5,16 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-const termSchema = z.object({
-  name: z.string().min(1, "Название обязательно"),
-  startDate: z.string(),
-  endDate: z.string(),
-});
+const termSchema = z
+  .object({
+    name: z.string().min(1, "Название обязательно"),
+    startDate: z.string(),
+    endDate: z.string(),
+  })
+  .refine((data) => new Date(data.startDate) < new Date(data.endDate), {
+    message: "Дата окончания должна быть позже даты начала",
+    path: ["endDate"],
+  });
 
 export async function getTerms() {
   const session = await auth();
@@ -101,15 +106,16 @@ export async function setActiveTerm(id: string) {
     throw new Error("Unauthorized");
   }
 
-  await prisma.term.updateMany({
-    where: { isActive: true },
-    data: { isActive: false },
-  });
-
-  await prisma.term.update({
-    where: { id },
-    data: { isActive: true },
-  });
+  await prisma.$transaction([
+    prisma.term.updateMany({
+      where: { isActive: true },
+      data: { isActive: false },
+    }),
+    prisma.term.update({
+      where: { id },
+      data: { isActive: true },
+    }),
+  ]);
 
   revalidatePath("/terms");
   revalidatePath("/dashboard");

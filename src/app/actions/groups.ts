@@ -92,6 +92,16 @@ export async function getGroup(id: string) {
     if (!hasAccess) throw new Error("Forbidden");
   }
 
+  if (session.user.role === "STUDENT") {
+    const studentProfile = await prisma.student.findFirst({
+      where: { userId: session.user.id, deletedAt: null },
+    });
+    const isMember = studentProfile
+      ? group.students.some((s) => s.studentId === studentProfile.id)
+      : false;
+    if (!isMember) throw new Error("Forbidden");
+  }
+
   return group;
 }
 

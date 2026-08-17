@@ -409,14 +409,7 @@ export async function getGradeDistribution(
       },
     });
 
-    const dist = [0, 0, 0, 0, 0];
-    records.forEach((r) => {
-      if (r.grade && r.grade >= 1 && r.grade <= 5) {
-        dist[r.grade - 1]++;
-      }
-    });
-
-    return dist.map((count, i) => ({ grade: i + 1, count }));
+    return bucketGrades(records);
   }
 
   const records = await prisma.attendanceRecord.findMany({
@@ -427,14 +420,24 @@ export async function getGradeDistribution(
     },
   });
 
-  const dist = [0, 0, 0, 0, 0];
-  records.forEach((r) => {
-    if (r.grade && r.grade >= 1 && r.grade <= 5) {
-      dist[r.grade - 1]++;
-    }
-  });
+  return bucketGrades(records);
+}
 
-  return dist.map((count, i) => ({ grade: i + 1, count }));
+// Шкала оценок 1–100: разбиваем на 5 диапазонов по 20 баллов
+const GRADE_BUCKETS = [
+  { label: "0-20", min: 0, max: 20 },
+  { label: "21-40", min: 21, max: 40 },
+  { label: "41-60", min: 41, max: 60 },
+  { label: "61-80", min: 61, max: 80 },
+  { label: "81-100", min: 81, max: 100 },
+];
+
+function bucketGrades(records: { grade: number | null }[]) {
+  return GRADE_BUCKETS.map((bucket) => ({
+    grade: bucket.label,
+    count: records.filter((r) => r.grade !== null && r.grade >= bucket.min && r.grade <= bucket.max)
+      .length,
+  }));
 }
 
 export async function getAtRiskStudents(

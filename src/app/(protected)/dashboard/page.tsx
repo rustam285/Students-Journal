@@ -107,7 +107,7 @@ export default function DashboardPage() {
 
   const [topStudents, setTopStudents] = useState<{ top: { name: string; avgGrade: number }[]; bottom: { name: string; avgGrade: number }[] }>({ top: [], bottom: [] });
   const [lessonNumberStats, setLessonNumberStats] = useState<{ lessonNumber: number; label: string; absenceRate: number }[]>([]);
-  const [gradeDistribution, setGradeDistribution] = useState<{ grade: number; count: number }[]>([]);
+  const [gradeDistribution, setGradeDistribution] = useState<{ grade: string; count: number }[]>([]);
   const [atRiskStudents, setAtRiskStudents] = useState<{ name: string; absenceRate: number; avgGrade: number | null }[]>([]);
   const [groupComparison, setGroupComparison] = useState<{ name: string; studentsCount: number; attendanceRate: number; avgGrade: number | null }[]>([]);
 

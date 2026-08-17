@@ -66,6 +66,18 @@ export async function getGroupStudents(groupId: string) {
     if (!hasAccess) throw new Error("Forbidden");
   }
 
+  if (session.user.role === "STUDENT") {
+    const studentProfile = await prisma.student.findFirst({
+      where: { userId: session.user.id, deletedAt: null },
+    });
+    if (!studentProfile) throw new Error("Forbidden");
+
+    const isMember = await prisma.studentGroup.findFirst({
+      where: { studentId: studentProfile.id, groupId },
+    });
+    if (!isMember) throw new Error("Forbidden");
+  }
+
   return prisma.studentGroup.findMany({
     where: { groupId },
     include: {
@@ -162,6 +174,18 @@ export async function getLesson(lessonId: string) {
       },
     });
     if (!hasAccess) throw new Error("Forbidden");
+  }
+
+  if (session.user.role === "STUDENT") {
+    const studentProfile = await prisma.student.findFirst({
+      where: { userId: session.user.id, deletedAt: null },
+    });
+    if (!studentProfile) throw new Error("Forbidden");
+
+    const isMember = await prisma.studentGroup.findFirst({
+      where: { studentId: studentProfile.id, groupId: lesson.groupId },
+    });
+    if (!isMember) throw new Error("Forbidden");
   }
 
   return lesson;
@@ -285,6 +309,7 @@ export async function updateAttendance(
     studentId: string;
     status: "PRESENT" | "ABSENT" | "LATE";
     grade?: number | null;
+    bonusPoints?: number | null;
     comment?: string | null;
   }[]
 ) {
@@ -302,7 +327,7 @@ export async function updateAttendance(
   if (session.user.role === "TEACHER" && lesson.teacherId !== session.user.id) {
     throw new Error("Forbidden");
   }
-  
+
   const groupStudentIds = new Set(
     (await prisma.studentGroup.findMany({
       where: { groupId: lesson.groupId },
@@ -315,33 +340,35 @@ export async function updateAttendance(
       throw new Error("Student not in this group");
     }
   }
-  
-  for (const record of records) {
-    const parsed = attendanceSchema.parse(record);
 
-    await prisma.attendanceRecord.upsert({
-      where: {
-        lessonId_studentId: {
+  const parsedRecords = records.map((record) => attendanceSchema.parse(record));
+
+  await prisma.$transaction(
+    parsedRecords.map((parsed) =>
+      prisma.attendanceRecord.upsert({
+        where: {
+          lessonId_studentId: {
+            lessonId,
+            studentId: parsed.studentId,
+          },
+        },
+        update: {
+          status: parsed.status,
+          grade: parsed.grade ?? null,
+          bonusPoints: parsed.bonusPoints ?? null,
+          comment: parsed.comment ?? null,
+        },
+        create: {
           lessonId,
           studentId: parsed.studentId,
+          status: parsed.status,
+          grade: parsed.grade ?? null,
+          bonusPoints: parsed.bonusPoints ?? null,
+          comment: parsed.comment ?? null,
         },
-      },
-      update: {
-        status: parsed.status,
-        grade: parsed.grade ?? null,
-        bonusPoints: parsed.bonusPoints ?? null,
-        comment: parsed.comment ?? null,
-      },
-      create: {
-        lessonId,
-        studentId: parsed.studentId,
-        status: parsed.status,
-        grade: parsed.grade ?? null,
-        bonusPoints: parsed.bonusPoints ?? null,
-        comment: parsed.comment ?? null,
-      },
-    });
-  }
+      })
+    )
+  );
 
   await logAudit(session.user.id, "UPDATE", "Attendance", lessonId, {
     recordsCount: records.length,

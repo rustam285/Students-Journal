@@ -83,17 +83,22 @@ export async function approveGroupAccessRequest(requestId: string) {
 
   if (!request) throw new Error("Request not found");
 
-  await prisma.teacherGroup.create({
-    data: {
-      teacherId: request.teacherId,
-      groupId: request.groupId,
-    },
-  });
+  if (request.status !== "PENDING") {
+    throw new Error("Запрос уже обработан");
+  }
 
-  await prisma.groupAccessRequest.update({
-    where: { id: requestId },
-    data: { status: "APPROVED" },
-  });
+  await prisma.$transaction([
+    prisma.teacherGroup.create({
+      data: {
+        teacherId: request.teacherId,
+        groupId: request.groupId,
+      },
+    }),
+    prisma.groupAccessRequest.update({
+      where: { id: requestId },
+      data: { status: "APPROVED" },
+    }),
+  ]);
 
   revalidatePath("/groups");
 }

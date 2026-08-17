@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -40,6 +41,96 @@ interface ParsedStudent {
   error?: string;
 }
 
+// --- Универсальный разбор строк (и для CSV, и для Excel) -----------------
+
+type ColMap = { lastName: number; firstName: number; email: number; phone: number };
+const POSITIONAL: ColMap = { lastName: 0, firstName: 1, email: 2, phone: 3 };
+
+function matchHeader(cell: string): keyof ColMap | null {
+  const c = cell.toLowerCase().trim();
+  if (!c) return null;
+  if (c.includes("фамил") || c.includes("last") || c.includes("surname")) return "lastName";
+  if (c === "имя" || c.startsWith("имя ") || c.startsWith("имя.") || c.includes("first")) return "firstName";
+  if (c.includes("mail") || c.includes("почта") || c.includes("email")) return "email";
+  if (c.includes("тел") || c.includes("phone") || c.includes("tel") || c.includes("моб")) return "phone";
+  return null;
+}
+
+// Возвращает карту колонок, если первая строка — заголовок, иначе null.
+function detectColumns(headerRow: string[]): ColMap | null {
+  const map: Partial<ColMap> = {};
+  let found = 0;
+  headerRow.forEach((cell, idx) => {
+    const f = matchHeader(cell);
+    if (f && map[f] === undefined) {
+      map[f] = idx;
+      found++;
+    }
+  });
+  // Считаем заголовком, если распознали хотя бы Фамилию и Имя
+  return found >= 2 && map.lastName !== undefined && map.firstName !== undefined
+    ? (map as ColMap)
+    : null;
+}
+
+function validateStudent(lastName: string, firstName: string, email: string): string[] {
+  const errors: string[] = [];
+  if (!lastName) errors.push("Нет фамилии");
+  if (!firstName) errors.push("Нет имени");
+  if (email && !email.includes("@")) errors.push("Некорректный email");
+  return errors;
+}
+
+// rows — массив массивов ячеек (каждая ячейка приводится к строке)
+function processRows(rows: unknown[][]): ParsedStudent[] {
+  const stringRows = rows.map((r) => r.map((c) => String(c ?? "").trim()));
+
+  if (stringRows.length === 0) return [];
+
+  let colMap = detectColumns(stringRows[0]);
+  let dataRows = stringRows;
+  if (colMap) {
+    dataRows = stringRows.slice(1); // пропускаем строку-заголовок
+  } else {
+    colMap = POSITIONAL; // позиционный формат: Фамилия;Имя;Email;Телефон
+  }
+
+  const students: ParsedStudent[] = [];
+  for (const cells of dataRows) {
+    // пропускаем полностью пустые строки
+    if (cells.every((c) => c === "")) continue;
+
+    const lastName = cells[colMap.lastName] ?? "";
+    const firstName = cells[colMap.firstName] ?? "";
+    const email = cells[colMap.email] ?? "";
+    const phone = cells[colMap.phone] ?? "";
+
+    if (!lastName && !firstName && !email && !phone) continue;
+
+    const errors = validateStudent(lastName, firstName, email);
+    students.push({
+      firstName,
+      lastName,
+      email,
+      phone,
+      valid: errors.length === 0,
+      error: errors.length > 0 ? errors.join(", ") : undefined,
+    });
+  }
+  return students;
+}
+
+// --- Разделение CSV на строки/ячейки (с минимальной поддержкой кавычек) ---
+function splitCsv(text: string): string[][] {
+  const lines = text.split(/\r?\n/);
+  return lines
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) =>
+      line.split(/[;,]/).map((p) => p.trim().replace(/^["']|["']$/g, ""))
+    );
+}
+
 export default function ImportPage() {
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>("");
@@ -47,6 +138,7 @@ export default function ImportPage() {
   const [parsedStudents, setParsedStudents] = useState<ParsedStudent[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ success: number; errors: number } | null>(null);
+  const [parseError, setParseError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -65,59 +157,54 @@ export default function ImportPage() {
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setParseError("");
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      parseCSV(text);
-    };
-    reader.readAsText(file);
-  }
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    const isExcel = ext === "xlsx" || ext === "xls";
 
-  function parseCSV(text: string) {
-    const lines = text.split("\n").filter((line) => line.trim());
-    const students: ParsedStudent[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      const parts = line.split(/[;,]/).map((p) => p.trim().replace(/^["']|["']$/g, ""));
-
-      if (parts.length < 2) {
-        students.push({
-          firstName: "",
-          lastName: parts[0] || "",
-          email: "",
-          phone: "",
-          valid: false,
-          error: "Недостаточно данных (нужно минимум: фамилия, имя)",
-        });
-        continue;
-      }
-
-      const lastName = parts[0];
-      const firstName = parts[1];
-      const email = parts[2] || "";
-      const phone = parts[3] || "";
-
-      const errors: string[] = [];
-      if (!lastName) errors.push("Нет фамилии");
-      if (!firstName) errors.push("Нет имени");
-      if (email && !email.includes("@")) errors.push("Некорректный email");
-
-      students.push({
-        firstName,
-        lastName,
-        email,
-        phone,
-        valid: errors.length === 0,
-        error: errors.length > 0 ? errors.join(", ") : undefined,
-      });
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target?.result as ArrayBuffer);
+          const wb = XLSX.read(data, { type: "array" });
+          const firstSheet = wb.Sheets[wb.SheetNames[0]];
+          if (!firstSheet) {
+            setParseError("Файл не содержит листов");
+            return;
+          }
+          const rows = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, {
+            header: 1,
+            defval: "",
+          });
+          const students = processRows(rows);
+          if (students.length === 0) {
+            setParseError("В файле не найдено строк с данными");
+            return;
+          }
+          setParsedStudents(students);
+          setDialogOpen(true);
+        } catch {
+          setParseError("Не удалось прочитать Excel-файл. Проверьте формат.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // CSV / TXT
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        const rows = splitCsv(text);
+        const students = processRows(rows);
+        if (students.length === 0) {
+          setParseError("В файле не найдено строк с данными");
+          return;
+        }
+        setParsedStudents(students);
+        setDialogOpen(true);
+      };
+      reader.readAsText(file);
     }
-
-    setParsedStudents(students);
-    setDialogOpen(true);
   }
 
   async function handleImport() {
@@ -142,14 +229,14 @@ export default function ImportPage() {
 
       const data = await response.json();
       if (!response.ok) {
-        alert(data.error || "Ошибка импорта");
+        setParseError(data.error || "Ошибка импорта");
         return;
       }
 
       setResult({ success: data.imported, errors: data.errors });
       setParsedStudents([]);
     } catch {
-      alert("Ошибка импорта");
+      setParseError("Ошибка импорта");
     } finally {
       setImporting(false);
     }
@@ -158,6 +245,7 @@ export default function ImportPage() {
   function resetImport() {
     setParsedStudents([]);
     setResult(null);
+    setParseError("");
     setDialogOpen(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -172,21 +260,31 @@ export default function ImportPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Загрузка CSV файла</CardTitle>
+          <CardTitle>Загрузка файла (CSV / Excel)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="p-4 bg-muted rounded-lg text-sm space-y-2">
-            <p className="font-medium">Формат CSV файла:</p>
+            <p className="font-medium">Поддерживаемые форматы: <code>.xlsx</code>, <code>.xls</code>, <code>.csv</code></p>
+            <p className="font-medium">Колонки:</p>
             <code className="block p-2 bg-background rounded">
               Фамилия;Имя;Email;Телефон
             </code>
             <p className="text-muted-foreground">
-              Разделитель — точка с запятой (;) или запятая (,). Email и телефон необязательны.
+              Строка-заголовок определяется автоматически (Фамилия/Имя/Email/Телефон
+              или LastName/FirstName/Email/Phone). Без неё используется позиционный
+              порядок. Разделитель в CSV — точка с запятой (;) или запятая (,).
+              Email и телефон необязательны.
             </p>
             <p className="text-muted-foreground">
               Пример: <code>Иванов;Иван;ivanov@mail.ru;+79001234567</code>
             </p>
           </div>
+
+          {parseError && (
+            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+              {parseError}
+            </div>
+          )}
 
           <div className="flex items-end gap-4">
             <div className="space-y-2 flex-1">
@@ -206,20 +304,20 @@ export default function ImportPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>CSV файл</Label>
+              <Label>Файл</Label>
               <div className="flex items-center gap-2">
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,.txt"
+                  accept=".csv,.txt,.xlsx,.xls"
                   onChange={handleFileSelect}
                   className="hidden"
-                  id="csv-upload"
+                  id="file-upload"
                 />
                 <Button
                   variant="outline"
                   onClick={() => {
-                    document.getElementById("csv-upload")?.click();
+                    document.getElementById("file-upload")?.click();
                   }}
                 >
                   <Upload className="mr-2 h-4 w-4" />

@@ -52,7 +52,7 @@ export async function deleteSubject(id: string) {
   }
 
   const subject = await prisma.subject.findUnique({ where: { id } });
-  if (!subject || subject.teacherId !== session.user.id) {
+  if (!subject || (session.user.role !== "ADMIN" && subject.teacherId !== session.user.id)) {
     throw new Error("Forbidden");
   }
 

@@ -2,15 +2,7 @@ import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-function generatePassword(): string {
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  let password = "";
-  for (let i = 0; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-}
+import { generatePassword } from "@/lib/password";
 
 export async function POST(request: Request) {
   try {
@@ -40,7 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!["TEACHER", "STUDENT"].includes(role)) {
+    if (!["ADMIN", "TEACHER", "STUDENT"].includes(role)) {
       return NextResponse.json({ error: "Недопустимая роль" }, { status: 400 });
     }
 

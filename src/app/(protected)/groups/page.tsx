@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -497,7 +498,14 @@ export default function GroupsPage() {
             <TableBody>
               {filteredGroups.map((group) => (
                 <TableRow key={group.id}>
-                  <TableCell className="font-medium">{group.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/groups/${group.id}`}
+                      className="hover:underline text-primary"
+                    >
+                      {group.name}
+                    </Link>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {group.description || "—"}
                   </TableCell>
@@ -528,7 +536,14 @@ export default function GroupsPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>{group.students.length}</TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/groups/${group.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {group.students.length}
+                    </Link>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       {isAdmin && (

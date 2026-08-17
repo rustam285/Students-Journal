@@ -1,0 +1,25 @@
+# Локальный PostgreSQL для разработки.
+# Запуск:  docker compose up -d
+# Остановка: docker compose down
+# Сброс данных (с удалением тома): docker compose down -v
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: students-journal-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: journal
+      POSTGRES_PASSWORD: journal
+      POSTGRES_DB: students_journal
+    ports:
+      - "5432:5432"
+    volumes:
+      - journal_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U journal -d students_journal"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  journal_pgdata:
