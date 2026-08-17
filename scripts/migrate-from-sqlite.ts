@@ -12,7 +12,6 @@
  *
  * Безопасность: перед запуском убеждается, что целевая БД пуста (иначе --force).
  */
-import Database from "better-sqlite3";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { PrismaClient } from "@prisma/client";
@@ -81,6 +80,18 @@ function convertRow(row: Record<string, unknown>, spec: ModelSpec): Record<strin
 }
 
 async function main() {
+  let Database: any;
+  try {
+    // Динамический импорт, чтобы не падать при сборке/запуске основного проекта
+    Database = (await import("better-sqlite3")).default;
+  } catch (e) {
+    console.error("⚠️  Пакет 'better-sqlite3' не установлен или не скомпилирован.");
+    console.error("Он нужен только для переноса данных из старой SQLite-БД.");
+    console.error("Если вам не нужно переносить старые данные — игнорируйте эту ошибку.");
+    console.error("Если нужно перенести данные, установите Visual Studio C++ Build Tools и выполните 'pnpm install'.");
+    process.exit(1);
+  }
+
   const sqliteUrl = process.env.SQLITE_DATABASE_URL;
   if (!sqliteUrl) {
     console.error("❌ SQLITE_DATABASE_URL не задан в .env (например: SQLITE_DATABASE_URL=\"file:C:/.../dev.db\")");
