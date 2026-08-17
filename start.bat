@@ -5,33 +5,33 @@ cd /d "%~dp0"
 
 echo ================================================
 echo   Students Journal
-echo   Запуск приложения со встроенной БД PostgreSQL
+echo   App + embedded PostgreSQL database
 echo ================================================
 echo.
 
-REM Первый запуск: установка зависимостей (включая бинарники PostgreSQL)
+REM First run: install dependencies (including PostgreSQL binaries)
 if not exist "node_modules" (
-    echo [1/2] Первый запуск: устанавливаю зависимости, подожди...
+    echo [1/2] First run: installing dependencies, please wait...
     call pnpm install
     if errorlevel 1 (
         echo.
-        echo [X] Ошибка установки зависимостей. Проверь, что установлены Node.js и pnpm.
+        echo [X] Dependency install failed. Check that Node.js and pnpm are installed.
         pause
         exit /b 1
     )
     echo.
 )
 
-echo [2/2] Запускаю приложение...
-echo       При первом запуске БД инициализируется автоматически,
-echo       при наличии старой SQLite-БД данные переносятся сами.
+echo [2/2] Starting the application...
+echo       First run: database is set up automatically.
+echo       Old SQLite data (if configured in .env) migrates automatically.
 echo.
-echo       Открыть в браузере: http://localhost:3000
-echo       Остановка: Ctrl+C в этом окне.
+echo       Open in browser: http://localhost:3000
+echo       Stop: press Ctrl+C in this window.
 echo.
 
 call pnpm dev:all
 
 echo.
-echo Приложение остановлено. Данные сохранены в папке pgdata.
+echo Application stopped. Data is stored in the pgdata folder.
 pause

@@ -16,6 +16,7 @@
     "setup": "node scripts/with-pg.mjs --setup-only",
     "dev:all": "node scripts/with-pg.mjs -- pnpm dev",
     "studio:all": "node scripts/with-pg.mjs -- pnpm db:studio"
+    "prod": "node scripts/with-pg.mjs --prod"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -4,6 +4,7 @@
  * Использование:
  *   node scripts/with-pg.mjs --setup-only          # первичная настройка БД и выход
  *   node scripts/with-pg.mjs -- pnpm dev           # поднять БД и запустить команду
+ *   node scripts/with-pg.mjs --prod                # поднять БД, сделать build и запустить start:all
  *   node scripts/with-pg.mjs -- pnpm db:studio     # любая другая команда
  *
  * Что делает при запуске:
@@ -16,6 +17,7 @@
  *        - есть старый SQLite (SQLITE_DATABASE_URL) → переносит данные
  *        - иначе → заливает тестовые данные (seed)
  *   7. Запускает переданную команду; при её завершении останавливает сервер
+ *      (в режиме --prod сначала выполнит pnpm build, а затем pnpm start:all)
  *
  * Надёжность (обработка аварийных завершений):
  *   - PID обёртки-владельца хранится в pgdata/.wrapper.pid
@@ -192,8 +194,10 @@ function run(command, args, label) {
 async function main() {
   const args = process.argv.slice(2);
   const setupOnly = args.includes("--setup-only");
+  const prodMode = args.includes("--prod");
   const dashDash = args.indexOf("--");
-  const command = dashDash !== -1 ? args.slice(dashDash + 1) : [];
+  // Если передан --prod и нет явной команды после --, используем "pnpm start"
+  const command = dashDash !== -1 ? args.slice(dashDash + 1) : (prodMode ? ["pnpm", "start"] : []);
 
   ensureEnvFile();
   loadEnv();
@@ -359,6 +363,19 @@ async function main() {
     }
     log("Готово.");
     return;
+  }
+
+  // --- НОВЫЙ БЛОК: Сборка проекта для прод-режима ---------------------------
+  if (prodMode) {
+    log("▶ Запускаю сборку проекта (pnpm build)…");
+    try {
+      // Используем существующую функцию run (она синхронная)
+      run("pnpm", ["build"], "pnpm build");
+    } catch (e) {
+      console.error(`❌ Ошибка сборки: ${errText(e)}`);
+      if (ownsPostgres) await pg.stop();
+      process.exit(1);
+    }
   }
 
   // 6. Запуск целевой команды; по завершении — остановка сервера (если мы владелец)
