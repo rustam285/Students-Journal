@@ -19,7 +19,7 @@ const lessonSchema = z.object({
   date: z.string(),
   lessonNumber: z.number().min(1).max(8),
   topic: z.string().min(1),
-  subjectId: z.string().optional().nullable(),
+  subjectId: z.string().min(1, "Выберите предмет"),
   notes: z.string().optional(),
 });
 
@@ -92,7 +92,7 @@ export async function getGroupStudents(groupId: string) {
   });
 }
 
-export async function getLessons(groupId: string, termId?: string) {
+export async function getLessons(groupId: string, termId?: string, subjectId?: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
 
@@ -124,6 +124,7 @@ export async function getLessons(groupId: string, termId?: string) {
 
   const where: Record<string, unknown> = { groupId, deletedAt: null };
   if (termId) where.termId = termId;
+  if (subjectId) where.subjectId = subjectId;
 
   if (session.user.role === "TEACHER") {
     where.teacherId = session.user.id;
@@ -214,7 +215,7 @@ export async function createLesson(data: FormData) {
     date: data.get("date"),
     lessonNumber: Number(data.get("lessonNumber")),
     topic: data.get("topic"),
-    subjectId: data.get("subjectId") || null,
+    subjectId: data.get("subjectId"),
     notes: data.get("notes") || undefined,
   });
 
@@ -278,7 +279,7 @@ export async function createLesson(data: FormData) {
       groupId: parsed.groupId,
       termId: term.id,
       teacherId: session.user.id,
-      subjectId: parsed.subjectId || null,
+      subjectId: parsed.subjectId,
       date: new Date(parsed.date),
       lessonNumber: parsed.lessonNumber,
       topic: parsed.topic,
@@ -426,6 +427,7 @@ export async function updateLesson(lessonId: string, data: FormData) {
     date: data.get("date"),
     lessonNumber: Number(data.get("lessonNumber")),
     topic: data.get("topic"),
+    subjectId: data.get("subjectId"),
     notes: data.get("notes") || undefined,
   });
 
@@ -450,6 +452,7 @@ export async function updateLesson(lessonId: string, data: FormData) {
       lessonNumber: parsed.lessonNumber,
       topic: parsed.topic,
       notes: parsed.notes,
+      subjectId: parsed.subjectId,
     },
   });
 

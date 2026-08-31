@@ -89,6 +89,7 @@ export default function JournalPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>("");
+  const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [students, setStudents] = useState<{ student: Student }[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,6 +121,13 @@ export default function JournalPage() {
   const [editLessonNumber, setEditLessonNumber] = useState<string>("1");
   const [editTopic, setEditTopic] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editSubjectId, setEditSubjectId] = useState<string>("");
+
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportGroup, setExportGroup] = useState<string>("");
+  const [exportSubject, setExportSubject] = useState<string>("all");
+  const [exportDateFrom, setExportDateFrom] = useState("");
+  const [exportDateTo, setExportDateTo] = useState("");
 
   const loadGroups = useCallback(async () => {
     try {
@@ -145,14 +153,15 @@ export default function JournalPage() {
   const loadLessons = useCallback(async () => {
     if (!selectedGroup) return;
     try {
-      const data = await getLessons(selectedGroup);
+      const subjFilter = selectedSubject === "all" ? undefined : selectedSubject;
+      const data = await getLessons(selectedGroup, undefined, subjFilter);
       setLessons(data as Lesson[]);
     } catch (error) {
       console.error("Failed to load lessons:", error);
     } finally {
       setLoading(false);
     }
-  }, [selectedGroup]);
+  }, [selectedGroup, selectedSubject]);
 
   const loadStudents = useCallback(async () => {
     if (!selectedGroup) return;
@@ -175,6 +184,14 @@ export default function JournalPage() {
       loadStudents();
     }
   }, [selectedGroup, loadLessons, loadStudents]);
+
+  function openExportDialog() {
+    setExportGroup(selectedGroup);
+    setExportSubject(selectedSubject);
+    setExportDateFrom("");
+    setExportDateTo("");
+    setExportDialogOpen(true);
+  }
 
   function openCreateDialog() {
     setNewDate(format(new Date(), "yyyy-MM-dd"));
@@ -214,6 +231,7 @@ export default function JournalPage() {
     setEditLessonNumber(lesson.lessonNumber.toString());
     setEditTopic(lesson.topic);
     setEditNotes(lesson.notes || "");
+    setEditSubjectId(lesson.subjectId || "");
   }
 
   function updateRecordField(
@@ -231,12 +249,16 @@ export default function JournalPage() {
 
   async function handleCreate(e: React.FormEvent, forceCreate = false) {
     e.preventDefault();
+    if (!newSubjectId) {
+      alert("Выберите предмет");
+      return;
+    }
     const formData = new FormData();
     formData.append("groupId", selectedGroup);
     formData.append("date", newDate);
     formData.append("lessonNumber", newLessonNumber);
     formData.append("topic", newTopic);
-    if (newSubjectId) formData.append("subjectId", newSubjectId);
+    formData.append("subjectId", newSubjectId);
     if (newNotes) formData.append("notes", newNotes);
     if (forceCreate) formData.append("forceCreate", "true");
 
@@ -257,12 +279,16 @@ export default function JournalPage() {
   }
 
   async function handleForceCreate() {
+    if (!newSubjectId) {
+      alert("Выберите предмет");
+      return;
+    }
     const formData = new FormData();
     formData.append("groupId", selectedGroup);
     formData.append("date", newDate);
     formData.append("lessonNumber", newLessonNumber);
     formData.append("topic", newTopic);
-    if (newSubjectId) formData.append("subjectId", newSubjectId);
+    formData.append("subjectId", newSubjectId);
     if (newNotes) formData.append("notes", newNotes);
     formData.append("forceCreate", "true");
 
@@ -315,11 +341,16 @@ export default function JournalPage() {
   async function handleSaveLessonDetails(e: React.FormEvent) {
     e.preventDefault();
     if (!editLessonDialog.lesson) return;
+    if (!editSubjectId) {
+      alert("Выберите предмет");
+      return;
+    }
 
     const formData = new FormData();
     formData.append("date", editDate);
     formData.append("lessonNumber", editLessonNumber);
     formData.append("topic", editTopic);
+    formData.append("subjectId", editSubjectId);
     if (editNotes) formData.append("notes", editNotes);
 
     startTransition(async () => {
@@ -334,18 +365,90 @@ export default function JournalPage() {
   }
 
   async function handleExport() {
-    if (!selectedGroup) return;
+    if (!exportGroup) {
+      alert("Выберите группу");
+      return;
+    }
+    if (exportDateFrom && exportDateTo && exportDateFrom > exportDateTo) {
+      alert("Дата «с» не может быть позже даты «по»");
+      return;
+    }
 
     try {
-      const data = await getJournalExport(selectedGroup);
+      const subjFilter = exportSubject === "all" ? undefined : exportSubject;
+      const data = await getJournalExport(
+        exportGroup,
+        undefined,
+        subjFilter,
+        exportDateFrom || undefined,
+        exportDateTo || undefined
+      );
+
+      if (data.lessons.length === 0) {
+        alert("По выбранным фильтрам занятий не найдено");
+        return;
+      }
 
       const rows: string[][] = [];
 
-      const header = ["Студент", ...data.lessons.map((l) => `${l.date} (${l.lessonNumber}п.) ${l.topic}`)];
+      // 1. Шапка отчёта
+      rows.push(["Отчет по посещаемости и успеваемости"]);
+      rows.push(["Группа:", data.groupName]);
+      if (subjFilter && data.lessons[0].subject) {
+        rows.push(["Предмет:", data.lessons[0].subject]);
+      }
+      if (data.lessons.length > 0 && data.lessons[0].term) {
+        rows.push(["Учебный период:", data.lessons[0].term]);
+      }
+      const periodFrom = exportDateFrom
+        ? new Date(exportDateFrom).toLocaleDateString("ru-RU")
+        : new Date(data.lessons[data.lessons.length - 1].date).toLocaleDateString("ru-RU");
+      const periodTo = exportDateTo
+        ? new Date(exportDateTo).toLocaleDateString("ru-RU")
+        : new Date(data.lessons[0].date).toLocaleDateString("ru-RU");
+      rows.push(["Период:", `с ${periodFrom} по ${periodTo}`]);
+      rows.push(["Дата формирования:", new Date().toLocaleDateString("ru-RU")]);
+      rows.push([]);
+
+      // 2. Заголовки таблицы
+      const header = [
+        "ФИО Студента",
+        "Всего занятий",
+        "Присутствовал (П)",
+        "Отсутствовал (Н)",
+        "Опоздал (О)",
+        "Средний балл",
+        ...data.lessons.map((l) => {
+          const dateStr = new Date(l.date).toLocaleDateString("ru-RU");
+          return `${dateStr} (${l.lessonNumber}п.) ${l.subject}`;
+        }),
+      ];
       rows.push(header);
 
+      // 3. Строки студентов со статистикой
       for (const student of data.students) {
-        const row = [student.name];
+        const studentRecords = data.lessons.flatMap((l) =>
+          l.records.filter((r) => r.studentId === student.id)
+        );
+        const present = studentRecords.filter((r) => r.status === "PRESENT").length;
+        const absent = studentRecords.filter((r) => r.status === "ABSENT").length;
+        const late = studentRecords.filter((r) => r.status === "LATE").length;
+
+        const grades = studentRecords.map((r) => r.grade).filter((g): g is number => g !== null);
+        const avgGrade =
+          grades.length > 0
+            ? (grades.reduce((a, b) => a + b, 0) / grades.length).toFixed(2)
+            : "—";
+
+        const row = [
+          student.name,
+          studentRecords.length.toString(),
+          present.toString(),
+          absent.toString(),
+          late.toString(),
+          avgGrade,
+        ];
+
         for (const lesson of data.lessons) {
           const record = lesson.records.find((r) => r.studentId === student.id);
           if (record) {
@@ -359,15 +462,19 @@ export default function JournalPage() {
         rows.push(row);
       }
 
-      const csv = rows.map((r) => r.join(";")).join("\n");
+      // 4. Формирование CSV (с экранированием кавычек, чтобы не ломалось из-за ; и ,)
+      const csv = rows
+        .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(";"))
+        .join("\n");
       const BOM = "\uFEFF";
       const blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `journal_${data.groupName}_${new Date().toISOString().split("T")[0]}.csv`;
+      link.download = `Отчет_${data.groupName}${subjFilter ? "_" + (data.lessons[0].subject || "") : ""}_${new Date().toISOString().split("T")[0]}.csv`;
       link.click();
       URL.revokeObjectURL(url);
+      setExportDialogOpen(false);
     } catch {
       alert("Ошибка экспорта");
     }
@@ -395,10 +502,83 @@ export default function JournalPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Журнал</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport} disabled={!selectedGroup}>
-            <Download className="mr-2 h-4 w-4" />
-            Экспорт CSV
-          </Button>
+          <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" onClick={openExportDialog} disabled={!selectedGroup}>
+                <Download className="mr-2 h-4 w-4" />
+                Экспорт CSV
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Экспорт отчёта</DialogTitle>
+                <DialogDescription>
+                  Настройте параметры отчёта и нажмите «Экспортировать»
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Группа</Label>
+                  <Select value={exportGroup} onValueChange={setExportGroup}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите группу" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups.map((group) => (
+                        <SelectItem key={group.id} value={group.id}>
+                          {group.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Предмет</Label>
+                  <Select value={exportSubject} onValueChange={setExportSubject}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Все предметы" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Все предметы</SelectItem>
+                      {subjects.map((subject) => (
+                        <SelectItem key={subject.id} value={subject.id}>
+                          {subject.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="exportDateFrom">Период с</Label>
+                    <Input
+                      id="exportDateFrom"
+                      type="date"
+                      value={exportDateFrom}
+                      onChange={(e) => setExportDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="exportDateTo">по</Label>
+                    <Input
+                      id="exportDateTo"
+                      type="date"
+                      value={exportDateTo}
+                      onChange={(e) => setExportDateTo(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
+                  Отмена
+                </Button>
+                <Button onClick={handleExport} disabled={isPending}>
+                  {isPending ? "Экспорт..." : "Экспортировать"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={openCreateDialog} disabled={!selectedGroup}>
@@ -445,10 +625,9 @@ export default function JournalPage() {
                 <Label htmlFor="subject">Предмет</Label>
                 <Select value={newSubjectId} onValueChange={setNewSubjectId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Выберите предмет (необязательно)" />
+                    <SelectValue placeholder="Выберите предмет" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Без предмета</SelectItem>
                     {subjects.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
@@ -543,6 +722,21 @@ export default function JournalPage() {
               </div>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="editSubject">Предмет</Label>
+              <Select value={editSubjectId} onValueChange={setEditSubjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите предмет" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subjects.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="editTopic">Тема занятия</Label>
               <Input
                 id="editTopic"
@@ -578,6 +772,21 @@ export default function JournalPage() {
             {groups.map((group) => (
               <SelectItem key={group.id} value={group.id}>
                 {group.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Label>Предмет:</Label>
+        <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+          <SelectTrigger className="w-[250px]">
+            <SelectValue placeholder="Все предметы" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все предметы</SelectItem>
+            {subjects.map((subject) => (
+              <SelectItem key={subject.id} value={subject.id}>
+                {subject.name}
               </SelectItem>
             ))}
           </SelectContent>

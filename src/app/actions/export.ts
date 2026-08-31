@@ -3,7 +3,13 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function getJournalExport(groupId: string, termId?: string) {
+export async function getJournalExport(
+  groupId: string,
+  termId?: string,
+  subjectId?: string,
+  dateFrom?: string,
+  dateTo?: string
+) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
 
@@ -35,11 +41,20 @@ export async function getJournalExport(groupId: string, termId?: string) {
 
   const where: Record<string, unknown> = { groupId, deletedAt: null };
   if (termId) where.termId = termId;
+  if (subjectId) where.subjectId = subjectId;
+  if (dateFrom || dateTo) {
+    where.date = {
+      ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+      ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59`) } : {}),
+    };
+  }
 
   const lessons = await prisma.lesson.findMany({
     where,
     include: {
       subject: { select: { name: true } },
+      teacher: { select: { name: true } },
+      term: { select: { name: true } },
       records: {
         include: {
           student: { select: { id: true, firstName: true, lastName: true } },
@@ -76,11 +91,14 @@ export async function getJournalExport(groupId: string, termId?: string) {
       date: l.date.toISOString().split("T")[0],
       lessonNumber: l.lessonNumber,
       topic: l.topic,
-      subject: l.subject?.name || "",
+      subject: l.subject?.name || "Без предмета",
+      teacher: l.teacher?.name || "",
+      term: l.term?.name || "",
       records: l.records.map((r) => ({
         studentId: r.studentId,
         status: r.status,
         grade: r.grade,
+        bonusPoints: r.bonusPoints,
         comment: r.comment,
       })),
     })),

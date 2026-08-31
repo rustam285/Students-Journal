@@ -117,9 +117,6 @@ importers:
       '@types/react-dom':
         specifier: ^18
         version: 18.3.7(@types/react@18.3.31)
-      better-sqlite3:
-        specifier: ^13.0.3
-        version: 13.0.3
       eslint:
         specifier: ^8
         version: 8.57.1
@@ -141,6 +138,10 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+    optionalDependencies:
+      better-sqlite3:
+        specifier: ^13.0.3
+        version: 13.0.3
 
 packages:
 
@@ -5279,6 +5280,7 @@ snapshots:
   better-sqlite3@13.0.3:
     dependencies:
       node-addon-api: 8.9.2
+    optional: true
 
   binary-extensions@2.3.0: {}
 
@@ -6751,7 +6753,8 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  node-addon-api@8.9.2: {}
+  node-addon-api@8.9.2:
+    optional: true
 
   node-exports-info@1.6.2:
     dependencies:
