@@ -40,7 +40,7 @@ import {
 } from "@/app/actions/terms";
 import {
   getPromotionPreview,
-  setGroupCourse,
+  setGroupCourses,
   promoteAcademicYear,
 } from "@/app/actions/academic-year";
 import { format } from "date-fns";
@@ -59,6 +59,7 @@ interface PromoGroup {
   id: string;
   name: string;
   course: number | null;
+  graduationCourse: number | null;
   studentsCount: number;
   homeroomTeacher: string | null;
 }
@@ -76,7 +77,6 @@ export default function TermsPage() {
   const [endDate, setEndDate] = useState("");
 
   const [promoGroups, setPromoGroups] = useState<PromoGroup[]>([]);
-  const [finalCourse, setFinalCourse] = useState<string>("4");
   const [promoteConfirmOpen, setPromoteConfirmOpen] = useState(false);
 
   useEffect(() => {
@@ -104,10 +104,36 @@ export default function TermsPage() {
     }
   }
 
-  async function handleSetCourse(groupId: string, course: string) {
+  async function handleSetCourse(group: PromoGroup, courseStr: string) {
+    const course = Number(courseStr);
+    const graduation =
+      group.graduationCourse !== null && group.graduationCourse >= course
+        ? group.graduationCourse
+        : course;
     startTransition(async () => {
       try {
-        await setGroupCourse(groupId, Number(course));
+        await setGroupCourses(group.id, course, graduation);
+        loadPromotion();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "Ошибка сохранения курса");
+      }
+    });
+  }
+
+  async function handleSetGraduation(group: PromoGroup, graduationStr: string) {
+    const course = group.course;
+    if (course === null) {
+      alert("Сначала укажите текущий курс");
+      return;
+    }
+    const graduation = Number(graduationStr);
+    if (graduation < course) {
+      alert("Выпускной курс не может быть меньше текущего");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await setGroupCourses(group.id, course, graduation);
         loadPromotion();
       } catch (error) {
         alert(error instanceof Error ? error.message : "Ошибка сохранения курса");
@@ -118,7 +144,7 @@ export default function TermsPage() {
   async function handlePromote() {
     startTransition(async () => {
       try {
-        const result = await promoteAcademicYear(Number(finalCourse));
+        const result = await promoteAcademicYear();
         setPromoteConfirmOpen(false);
         alert(
           `Готово! Переведено групп: ${result.promotedCount}, выпущено: ${result.graduatedCount} (${result.graduatedStudents} студентов отчислены)`
@@ -363,27 +389,13 @@ export default function TermsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Переводит все группы на следующий курс. Группы выпускного курса скрываются из
-            системы вместе со студентами: их учётные записи удаляются (вход закрывается),
-            но история занятий и оценок сохраняется. Названия групп обновите вручную при
-            необходимости. Не забудьте создать и активировать новый учебный период выше.
+            Переводит все группы на следующий курс. Группы, для которых наступил выпускной
+            курс, скрываются из системы вместе со студентами: их учётные записи удаляются
+            (вход закрывается), но история занятий и оценок сохраняется. Выпускной курс
+            указывается для каждой группы отдельно (например, ТФИ — 4 курса, ТПО — 5).
+            Названия групп обновите вручную при необходимости. Не забудьте создать и
+            активировать новый учебный период выше.
           </p>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <Label>Выпускной курс:</Label>
-            <Select value={finalCourse} onValueChange={setFinalCourse}>
-              <SelectTrigger className="w-full sm:w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4, 5, 6].map((c) => (
-                  <SelectItem key={c} value={c.toString()}>
-                    {c} курс
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
           <Table>
             <TableHeader>
@@ -392,14 +404,16 @@ export default function TermsPage() {
                 <TableHead>Куратор</TableHead>
                 <TableHead>Студентов</TableHead>
                 <TableHead>Курс</TableHead>
+                <TableHead>Выпускной</TableHead>
                 <TableHead>При переводе</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {promoGroups.map((group) => {
-                const graduationCourse = Number(finalCourse);
                 const graduating =
-                  group.course !== null && group.course >= graduationCourse;
+                  group.course !== null &&
+                  group.graduationCourse !== null &&
+                  group.course >= group.graduationCourse;
                 return (
                   <TableRow key={group.id}>
                     <TableCell className="font-medium">{group.name}</TableCell>
@@ -411,9 +425,9 @@ export default function TermsPage() {
                       ) : (
                         <Select
                           value={undefined}
-                          onValueChange={(v) => handleSetCourse(group.id, v)}
+                          onValueChange={(v) => handleSetCourse(group, v)}
                         >
-                          <SelectTrigger className="w-[140px] h-8">
+                          <SelectTrigger className="w-[130px] h-8">
                             <SelectValue placeholder="Укажите курс" />
                           </SelectTrigger>
                           <SelectContent>
@@ -427,7 +441,34 @@ export default function TermsPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {group.course === null ? (
+                      {group.graduationCourse !== null ? (
+                        <Badge variant="secondary">
+                          {group.graduationCourse} курс
+                        </Badge>
+                      ) : (
+                        <Select
+                          value={undefined}
+                          onValueChange={(v) => handleSetGraduation(group, v)}
+                        >
+                          <SelectTrigger className="w-[130px] h-8">
+                            <SelectValue placeholder="Укажите" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5, 6]
+                              .filter(
+                                (c) => group.course === null || c >= group.course
+                              )
+                              .map((c) => (
+                                <SelectItem key={c} value={c.toString()}>
+                                  {c} курс
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {group.course === null || group.graduationCourse === null ? (
                         <span className="text-muted-foreground text-sm">—</span>
                       ) : graduating ? (
                         <Badge variant="destructive">
@@ -445,7 +486,7 @@ export default function TermsPage() {
               })}
               {promoGroups.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     Нет активных групп
                   </TableCell>
                 </TableRow>
@@ -457,7 +498,12 @@ export default function TermsPage() {
             <DialogTrigger asChild>
               <Button
                 variant="destructive"
-                disabled={isPending || promoGroups.some((g) => g.course === null)}
+                disabled={
+                  isPending ||
+                  promoGroups.some(
+                    (g) => g.course === null || g.graduationCourse === null
+                  )
+                }
               >
                 <GraduationCap className="mr-2 h-4 w-4" />
                 Перевести на новый учебный год
@@ -473,11 +519,15 @@ export default function TermsPage() {
               </DialogHeader>
               <div className="space-y-2 text-sm">
                 {promoGroups
-                  .filter((g) => g.course !== null)
+                  .filter(
+                    (g) => g.course !== null && g.graduationCourse !== null
+                  )
                   .map((g) => (
                     <div key={g.id} className="flex items-center justify-between">
                       <span>{g.name}</span>
-                      {g.course !== null && g.course >= Number(finalCourse) ? (
+                      {g.course !== null &&
+                      g.graduationCourse !== null &&
+                      g.course >= g.graduationCourse ? (
                         <Badge variant="destructive">
                           Выпуск ({g.studentsCount} студ.)
                         </Badge>

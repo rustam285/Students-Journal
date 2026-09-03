@@ -60,6 +60,7 @@ model Group {
   name              String
   description       String?
   course            Int?
+  graduationCourse  Int?
   homeroomTeacherId String?
   homeroomTeacher   User?    @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
   students          StudentGroup[]

@@ -6,11 +6,14 @@ import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-const courseSchema = z.number().int().min(1).max(6);
-
-const promotionSchema = z.object({
-  finalCourse: z.number().int().min(1).max(6),
-});
+const groupCoursesSchema = z
+  .object({
+    course: z.number().int().min(1).max(6),
+    graduationCourse: z.number().int().min(1).max(6),
+  })
+  .refine((data) => data.graduationCourse >= data.course, {
+    message: "Выпускной курс не может быть меньше текущего",
+  });
 
 export async function getPromotionPreview() {
   const session = await auth();
@@ -33,44 +36,52 @@ export async function getPromotionPreview() {
     id: g.id,
     name: g.name,
     course: g.course,
+    graduationCourse: g.graduationCourse,
     studentsCount: g._count.students,
     homeroomTeacher: g.homeroomTeacher?.name || null,
   }));
 }
 
-export async function setGroupCourse(groupId: string, course: number) {
+export async function setGroupCourses(
+  groupId: string,
+  course: number,
+  graduationCourse: number
+) {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") {
     throw new Error("Unauthorized");
   }
 
-  const parsedCourse = courseSchema.parse(course);
+  const parsed = groupCoursesSchema.parse({ course, graduationCourse });
 
   const group = await prisma.group.findUnique({ where: { id: groupId } });
   if (!group || group.deletedAt) throw new Error("Group not found");
 
   await prisma.group.update({
     where: { id: groupId },
-    data: { course: parsedCourse },
+    data: {
+      course: parsed.course,
+      graduationCourse: parsed.graduationCourse,
+    },
   });
 
   await logAudit(session.user.id, "UPDATE", "Group", groupId, {
     name: group.name,
     course: group.course ?? null,
-    newCourse: parsedCourse,
+    graduationCourse: group.graduationCourse ?? null,
+    newCourse: parsed.course,
+    newGraduationCourse: parsed.graduationCourse,
   });
 
   revalidatePath("/terms");
   revalidatePath("/groups");
 }
 
-export async function promoteAcademicYear(finalCourse: number) {
+export async function promoteAcademicYear() {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") {
     throw new Error("Unauthorized");
   }
-
-  const { finalCourse: graduationCourse } = promotionSchema.parse({ finalCourse });
 
   const groups = await prisma.group.findMany({
     where: { deletedAt: null },
@@ -82,15 +93,21 @@ export async function promoteAcademicYear(finalCourse: number) {
     orderBy: { name: "asc" },
   });
 
-  const groupsWithoutCourse = groups.filter((g) => g.course === null);
-  if (groupsWithoutCourse.length > 0) {
-    const names = groupsWithoutCourse.map((g) => g.name).join(", ");
-    throw new Error(`Укажите курс для групп: ${names}`);
+  const notConfigured = groups.filter(
+    (g) => g.course === null || g.graduationCourse === null
+  );
+  if (notConfigured.length > 0) {
+    const names = notConfigured.map((g) => g.name).join(", ");
+    throw new Error(`Укажите курс и выпускной курс для групп: ${names}`);
   }
 
   const now = new Date();
-  const toGraduate = groups.filter((g) => (g.course as number) >= graduationCourse);
-  const toPromote = groups.filter((g) => (g.course as number) < graduationCourse);
+  const toGraduate = groups.filter(
+    (g) => (g.course as number) >= (g.graduationCourse as number)
+  );
+  const toPromote = groups.filter(
+    (g) => (g.course as number) < (g.graduationCourse as number)
+  );
 
   await prisma.$transaction(async (tx) => {
     for (const group of toGraduate) {
@@ -144,7 +161,6 @@ export async function promoteAcademicYear(finalCourse: number) {
     promoted: toPromote.map((g) => ({ name: g.name, course: g.course })),
     graduated: toGraduate.map((g) => ({ name: g.name, course: g.course })),
     graduatedStudents,
-    finalCourse: graduationCourse,
   });
 
   revalidatePath("/terms");
