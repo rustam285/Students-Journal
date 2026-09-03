@@ -307,20 +307,14 @@ async function main() {
       await admin.end();
     }
 
-    // 4. Схема Prisma
+    // 4. Схема Prisma: применяем всегда (db push идемпотентен —
+    // при уже синхронизированной схеме это мгновенная no-op, а вот
+    // после git pull со сменой schema.prisma недостающие колонки добавятся)
     const client = pg.getPgClient(PG_DATABASE);
     await client.connect();
-    const tables = await client.query(
-      `SELECT COUNT(*)::int AS n FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = 'User'`
-    );
-    if (tables.rows[0].n === 0) {
-      await client.end();
-      log("Применяю схему Prisma (db push)…");
-      run("pnpm", ["prisma", "db", "push"], "prisma db push");
-    } else {
-      await client.end();
-    }
+    await client.end();
+    log("Проверяю/применяю схему Prisma (db push)…");
+    run("pnpm", ["prisma", "db push"], "prisma db push");
 
     // 5. Данные: миграция из SQLite или seed
     const check = pg.getPgClient(PG_DATABASE);
