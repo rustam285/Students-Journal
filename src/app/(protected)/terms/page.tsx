@@ -40,7 +40,8 @@ import {
 } from "@/app/actions/terms";
 import {
   getPromotionPreview,
-  setGroupCourses,
+  setGroupCourse,
+  setGroupGraduationCourse,
   promoteAcademicYear,
 } from "@/app/actions/academic-year";
 import { format } from "date-fns";
@@ -105,14 +106,9 @@ export default function TermsPage() {
   }
 
   async function handleSetCourse(group: PromoGroup, courseStr: string) {
-    const course = Number(courseStr);
-    const graduation =
-      group.graduationCourse !== null && group.graduationCourse >= course
-        ? group.graduationCourse
-        : course;
     startTransition(async () => {
       try {
-        await setGroupCourses(group.id, course, graduation);
+        await setGroupCourse(group.id, Number(courseStr));
         loadPromotion();
       } catch (error) {
         alert(error instanceof Error ? error.message : "Ошибка сохранения курса");
@@ -121,19 +117,13 @@ export default function TermsPage() {
   }
 
   async function handleSetGraduation(group: PromoGroup, graduationStr: string) {
-    const course = group.course;
-    if (course === null) {
+    if (group.course === null) {
       alert("Сначала укажите текущий курс");
-      return;
-    }
-    const graduation = Number(graduationStr);
-    if (graduation < course) {
-      alert("Выпускной курс не может быть меньше текущего");
       return;
     }
     startTransition(async () => {
       try {
-        await setGroupCourses(group.id, course, graduation);
+        await setGroupGraduationCourse(group.id, Number(graduationStr));
         loadPromotion();
       } catch (error) {
         alert(error instanceof Error ? error.message : "Ошибка сохранения курса");
@@ -420,52 +410,42 @@ export default function TermsPage() {
                     <TableCell>{group.homeroomTeacher || "—"}</TableCell>
                     <TableCell>{group.studentsCount}</TableCell>
                     <TableCell>
-                      {group.course !== null ? (
-                        <Badge variant="outline">{group.course} курс</Badge>
-                      ) : (
-                        <Select
-                          value={undefined}
-                          onValueChange={(v) => handleSetCourse(group, v)}
-                        >
-                          <SelectTrigger className="w-[130px] h-8">
-                            <SelectValue placeholder="Укажите курс" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[1, 2, 3, 4, 5, 6].map((c) => (
+                      <Select
+                        value={group.course?.toString()}
+                        onValueChange={(v) => handleSetCourse(group, v)}
+                      >
+                        <SelectTrigger className="w-[130px] h-8">
+                          <SelectValue placeholder="Укажите курс" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6].map((c) => (
+                            <SelectItem key={c} value={c.toString()}>
+                              {c} курс
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={group.graduationCourse?.toString()}
+                        onValueChange={(v) => handleSetGraduation(group, v)}
+                      >
+                        <SelectTrigger className="w-[130px] h-8">
+                          <SelectValue placeholder="Укажите" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6]
+                            .filter(
+                              (c) => group.course === null || c >= group.course
+                            )
+                            .map((c) => (
                               <SelectItem key={c} value={c.toString()}>
                                 {c} курс
                               </SelectItem>
                             ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {group.graduationCourse !== null ? (
-                        <Badge variant="secondary">
-                          {group.graduationCourse} курс
-                        </Badge>
-                      ) : (
-                        <Select
-                          value={undefined}
-                          onValueChange={(v) => handleSetGraduation(group, v)}
-                        >
-                          <SelectTrigger className="w-[130px] h-8">
-                            <SelectValue placeholder="Укажите" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[1, 2, 3, 4, 5, 6]
-                              .filter(
-                                (c) => group.course === null || c >= group.course
-                              )
-                              .map((c) => (
-                                <SelectItem key={c} value={c.toString()}>
-                                  {c} курс
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       {group.course === null || group.graduationCourse === null ? (

@@ -6,14 +6,9 @@ import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-const groupCoursesSchema = z
-  .object({
-    course: z.number().int().min(1).max(6),
-    graduationCourse: z.number().int().min(1).max(6),
-  })
-  .refine((data) => data.graduationCourse >= data.course, {
-    message: "Выпускной курс не может быть меньше текущего",
-  });
+const courseSchema = z.number().int().min(1).max(6);
+
+const graduationCourseSchema = z.number().int().min(1).max(6);
 
 export async function getPromotionPreview() {
   const session = await auth();
@@ -42,9 +37,43 @@ export async function getPromotionPreview() {
   }));
 }
 
-export async function setGroupCourses(
+export async function setGroupCourse(groupId: string, course: number) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") {
+    throw new Error("Unauthorized");
+  }
+
+  const parsedCourse = courseSchema.parse(course);
+
+  const group = await prisma.group.findUnique({ where: { id: groupId } });
+  if (!group || group.deletedAt) throw new Error("Group not found");
+
+  if (
+    group.graduationCourse !== null &&
+    group.graduationCourse < parsedCourse
+  ) {
+    throw new Error(
+      `Выпускной курс группы (${group.graduationCourse}) меньше выбранного текущего (${parsedCourse}). Сначала повысьте выпускной курс.`
+    );
+  }
+
+  await prisma.group.update({
+    where: { id: groupId },
+    data: { course: parsedCourse },
+  });
+
+  await logAudit(session.user.id, "UPDATE", "Group", groupId, {
+    name: group.name,
+    course: group.course ?? null,
+    newCourse: parsedCourse,
+  });
+
+  revalidatePath("/terms");
+  revalidatePath("/groups");
+}
+
+export async function setGroupGraduationCourse(
   groupId: string,
-  course: number,
   graduationCourse: number
 ) {
   const session = await auth();
@@ -52,25 +81,24 @@ export async function setGroupCourses(
     throw new Error("Unauthorized");
   }
 
-  const parsed = groupCoursesSchema.parse({ course, graduationCourse });
+  const parsedGraduation = graduationCourseSchema.parse(graduationCourse);
 
   const group = await prisma.group.findUnique({ where: { id: groupId } });
   if (!group || group.deletedAt) throw new Error("Group not found");
 
+  if (group.course !== null && parsedGraduation < group.course) {
+    throw new Error("Выпускной курс не может быть меньше текущего");
+  }
+
   await prisma.group.update({
     where: { id: groupId },
-    data: {
-      course: parsed.course,
-      graduationCourse: parsed.graduationCourse,
-    },
+    data: { graduationCourse: parsedGraduation },
   });
 
   await logAudit(session.user.id, "UPDATE", "Group", groupId, {
     name: group.name,
-    course: group.course ?? null,
     graduationCourse: group.graduationCourse ?? null,
-    newCourse: parsed.course,
-    newGraduationCourse: parsed.graduationCourse,
+    newGraduationCourse: parsedGraduation,
   });
 
   revalidatePath("/terms");
