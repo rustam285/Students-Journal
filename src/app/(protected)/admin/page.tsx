@@ -119,26 +119,26 @@ export default function AdminPage() {
         </Card>
 
         {createdUser && (
-          <Card className="border-green-200 bg-green-50">
+          <Card className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40">
             <CardHeader>
-              <CardTitle className="text-green-800">Пользователь создан!</CardTitle>
-              <CardDescription className="text-green-700">
+              <CardTitle className="text-green-800 dark:text-green-300">Пользователь создан!</CardTitle>
+              <CardDescription className="text-green-700 dark:text-green-300">
                 Скопируйте временный пароль и передайте пользователю
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="text-green-700">Имя</Label>
+                <Label className="text-green-700 dark:text-green-300">Имя</Label>
                 <p className="text-lg font-medium">{createdUser.name}</p>
               </div>
               <div>
-                <Label className="text-green-700">Email</Label>
+                <Label className="text-green-700 dark:text-green-300">Email</Label>
                 <p className="text-lg font-medium">{createdUser.email}</p>
               </div>
               <div>
-                <Label className="text-green-700">Временный пароль</Label>
+                <Label className="text-green-700 dark:text-green-300">Временный пароль</Label>
                 <div className="flex items-center gap-2">
-                  <code className="p-2 bg-white rounded text-lg font-mono">
+                  <code className="p-2 bg-white dark:bg-muted rounded text-lg font-mono">
                     {createdUser.password}
                   </code>
                   <Button
@@ -161,7 +161,7 @@ export default function AdminPage() {
                   </Button>
                 </div>
               </div>
-              <p className="text-sm text-green-700">
+              <p className="text-sm text-green-700 dark:text-green-300">
                 ⚠️ Этот пароль больше не будет доступен. Пользователь будет вынужден сменить его при первом входе.
               </p>
             </CardContent>

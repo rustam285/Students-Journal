@@ -199,26 +199,26 @@ export default function TeachersPage() {
               </DialogDescription>
             </DialogHeader>
             {createdUser ? (
-              <div className="space-y-4 p-4 bg-green-50 rounded-lg">
-                <p className="font-medium text-green-800">Преподаватель создан!</p>
+              <div className="space-y-4 p-4 bg-green-50 dark:bg-green-950/40 rounded-lg">
+                <p className="font-medium text-green-800 dark:text-green-300">Преподаватель создан!</p>
                 <div>
-                  <Label className="text-green-700">Имя</Label>
+                  <Label className="text-green-700 dark:text-green-300">Имя</Label>
                   <p className="font-medium">{createdUser.name}</p>
                 </div>
                 <div>
-                  <Label className="text-green-700">Email</Label>
+                  <Label className="text-green-700 dark:text-green-300">Email</Label>
                   <p className="font-medium">{createdUser.email}</p>
                 </div>
                 <div>
-                  <Label className="text-green-700">Временный пароль</Label>
+                  <Label className="text-green-700 dark:text-green-300">Временный пароль</Label>
                   <div className="flex items-center gap-2">
-                    <code className="p-2 bg-white rounded font-mono">{createdUser.password}</code>
+                    <code className="p-2 bg-white dark:bg-muted rounded font-mono">{createdUser.password}</code>
                     <Button size="sm" variant="outline" onClick={copyPassword}>
                       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
                 </div>
-                <p className="text-sm text-green-700">
+                <p className="text-sm text-green-700 dark:text-green-300">
                   Пользователь будет вынужден сменить пароль при первом входе.
                 </p>
                 <Button onClick={() => setCreateDialogOpen(false)}>Закрыть</Button>

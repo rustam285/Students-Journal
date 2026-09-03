@@ -305,11 +305,11 @@ export default function DashboardPage() {
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={attendanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", color: "hsl(var(--card-foreground))" }} />
+                  <Legend formatter={(value) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
                   <Bar dataKey="PRESENT" name="Присутствует" fill="#22c55e" stackId="a" />
                   <Bar dataKey="LATE" name="Опоздал" fill="#eab308" stackId="a" />
                   <Bar dataKey="ABSENT" name="Отсутствует" fill="#ef4444" stackId="a" />
@@ -334,7 +334,11 @@ export default function DashboardPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }: { name?: string; percent?: number }) => (
+                      <span style={{ color: "hsl(var(--foreground))" }}>
+                        {name} {((percent ?? 0) * 100).toFixed(0)}%
+                      </span>
+                    )}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -343,7 +347,7 @@ export default function DashboardPage() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", color: "hsl(var(--card-foreground))" }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -361,11 +365,11 @@ export default function DashboardPage() {
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={gradeData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis domain={[1, 5]} />
-                <Tooltip />
-                <Legend />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis domain={[1, 5]} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", color: "hsl(var(--card-foreground))" }} />
+                <Legend formatter={(value) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
                 <Line type="monotone" dataKey="grade" name="Средняя оценка" stroke="#8884d8" activeDot={{ r: 8 }} />
               </LineChart>
             </ResponsiveContainer>
@@ -386,10 +390,10 @@ export default function DashboardPage() {
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={lessonNumberStats}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="label" />
-                      <YAxis unit="%" />
-                      <Tooltip formatter={(value: number) => [`${value}%`, "Пропуски"]} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                      <YAxis unit="%" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                      <Tooltip formatter={(value: number) => [`${value}%`, "Пропуски"]} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", color: "hsl(var(--card-foreground))" }} />
                       <Bar dataKey="absenceRate" name="% пропусков" fill="#ef4444">
                         {lessonNumberStats.map((entry, index) => (
                           <Cell key={index} fill={entry.absenceRate > 30 ? "#ef4444" : entry.absenceRate > 15 ? "#eab308" : "#22c55e"} />
@@ -411,10 +415,10 @@ export default function DashboardPage() {
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={gradeDistribution}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="grade" />
-                      <YAxis />
-                      <Tooltip />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="grade" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                      <YAxis tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", color: "hsl(var(--card-foreground))" }} />
                       <Bar dataKey="count" name="Количество" fill="#8884d8">
                         {gradeDistribution.map((entry, index) => (
                           <Cell key={index} fill={["#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e"][index]} />
@@ -446,7 +450,7 @@ export default function DashboardPage() {
                         <div className="flex gap-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">Посещ.:</span>{" "}
-                            <span className={g.attendanceRate >= 80 ? "text-green-600" : g.attendanceRate >= 60 ? "text-yellow-600" : "text-red-600"}>
+                            <span className={g.attendanceRate >= 80 ? "text-green-600 dark:text-green-400" : g.attendanceRate >= 60 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400"}>
                               {g.attendanceRate}%
                             </span>
                           </div>
@@ -464,7 +468,7 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-red-600">Студенты в зоне риска</CardTitle>
+                <CardTitle className="text-red-600 dark:text-red-400">Студенты в зоне риска</CardTitle>
               </CardHeader>
               <CardContent>
                 {atRiskStudents.length === 0 ? (
@@ -472,14 +476,14 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-2">
                     {atRiskStudents.map((s) => (
-                      <div key={s.name} className="flex items-center justify-between p-2 bg-red-50 rounded">
+                      <div key={s.name} className="flex items-center justify-between p-2 bg-red-50 dark:bg-red-950/40 rounded">
                         <span className="font-medium">{s.name}</span>
                         <div className="flex gap-3 text-sm">
                           {s.absenceRate >= 30 && (
-                            <span className="text-red-600">Пропуски: {s.absenceRate}%</span>
+                            <span className="text-red-600 dark:text-red-400">Пропуски: {s.absenceRate}%</span>
                           )}
                           {s.avgGrade !== null && s.avgGrade < 3 && (
-                            <span className="text-red-600">Ср. балл: {s.avgGrade}</span>
+                            <span className="text-red-600 dark:text-red-400">Ср. балл: {s.avgGrade}</span>
                           )}
                         </div>
                       </div>
@@ -493,7 +497,7 @@ export default function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-green-600">Лучшие студенты</CardTitle>
+                <CardTitle className="text-green-600 dark:text-green-400">Лучшие студенты</CardTitle>
               </CardHeader>
               <CardContent>
                 {topStudents.top.length === 0 ? (
@@ -501,9 +505,9 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-2">
                     {topStudents.top.map((s, i) => (
-                      <div key={s.name} className="flex items-center justify-between p-2 bg-green-50 rounded">
+                      <div key={s.name} className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-950/40 rounded">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-green-600">{i + 1}.</span>
+                          <span className="text-lg font-bold text-green-600 dark:text-green-400">{i + 1}.</span>
                           <span className="font-medium">{s.name}</span>
                         </div>
                         <Badge variant="default" className="bg-green-600">{s.avgGrade}</Badge>
@@ -516,7 +520,7 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-orange-600">Отстающие студенты</CardTitle>
+                <CardTitle className="text-orange-600 dark:text-orange-400">Отстающие студенты</CardTitle>
               </CardHeader>
               <CardContent>
                 {topStudents.bottom.length === 0 ? (
@@ -524,9 +528,9 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-2">
                     {topStudents.bottom.map((s, i) => (
-                      <div key={s.name} className="flex items-center justify-between p-2 bg-orange-50 rounded">
+                      <div key={s.name} className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-950/40 rounded">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-orange-600">{i + 1}.</span>
+                          <span className="text-lg font-bold text-orange-600 dark:text-orange-400">{i + 1}.</span>
                           <span className="font-medium">{s.name}</span>
                         </div>
                         <Badge variant="destructive">{s.avgGrade}</Badge>

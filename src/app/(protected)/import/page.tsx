@@ -346,14 +346,14 @@ export default function ImportPage() {
 
           {result ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-4 p-4 bg-green-50 rounded-lg">
-                <Check className="h-8 w-8 text-green-600" />
+              <div className="flex items-center gap-4 p-4 bg-green-50 dark:bg-green-950/40 rounded-lg">
+                <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
                 <div>
-                  <p className="font-medium text-green-800">
+                  <p className="font-medium text-green-800 dark:text-green-300">
                     Успешно импортировано: {result.success}
                   </p>
                   {result.errors > 0 && (
-                    <p className="text-sm text-red-600">
+                    <p className="text-sm text-red-600 dark:text-red-400">
                       Ошибок: {result.errors}
                     </p>
                   )}
@@ -387,7 +387,7 @@ export default function ImportPage() {
                 </TableHeader>
                 <TableBody>
                   {parsedStudents.map((student, i) => (
-                    <TableRow key={i} className={!student.valid ? "bg-red-50" : ""}>
+                    <TableRow key={i} className={!student.valid ? "bg-red-50 dark:bg-red-950/40" : ""}>
                       <TableCell>{i + 1}</TableCell>
                       <TableCell>{student.lastName || "—"}</TableCell>
                       <TableCell>{student.firstName || "—"}</TableCell>

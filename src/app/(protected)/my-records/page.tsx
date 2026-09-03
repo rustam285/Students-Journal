@@ -109,7 +109,7 @@ export default function MyRecordsPage() {
             <CardTitle className="text-sm text-muted-foreground">Присутствовал</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.present}</div>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.present}</div>
           </CardContent>
         </Card>
         <Card>
@@ -117,7 +117,7 @@ export default function MyRecordsPage() {
             <CardTitle className="text-sm text-muted-foreground">Отсутствовал</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.absent}</div>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.absent}</div>
           </CardContent>
         </Card>
         <Card>

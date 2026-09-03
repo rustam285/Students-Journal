@@ -363,9 +363,9 @@ export default function GroupsPage() {
       </div>
 
       {isAdmin && accessRequests.length > 0 && (
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40">
           <CardHeader>
-            <CardTitle className="text-yellow-800 flex items-center gap-2">
+            <CardTitle className="text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
               <UserPlus className="h-5 w-5" />
               Запросы на доступ ({accessRequests.length})
             </CardTitle>
@@ -375,7 +375,7 @@ export default function GroupsPage() {
               {accessRequests.map((req) => (
                 <div
                   key={req.id}
-                  className="flex items-center justify-between p-3 bg-white rounded-lg border"
+                  className="flex items-center justify-between p-3 bg-white dark:bg-muted rounded-lg border"
                 >
                   <div>
                     <span className="font-medium">{req.teacher.name}</span>

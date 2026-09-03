@@ -197,7 +197,7 @@ export default function ProfilePage() {
                 </div>
               )}
               {success && (
-                <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md">
+                <div className="p-3 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40 rounded-md">
                   {success}
                 </div>
               )}
