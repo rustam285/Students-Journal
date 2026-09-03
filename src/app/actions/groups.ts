@@ -34,6 +34,7 @@ export async function getGroups() {
         include: { teacher: { select: { id: true, name: true } } },
       },
       students: {
+        where: { student: { deletedAt: null } },
         include: { student: { select: { id: true, firstName: true, lastName: true } } },
       },
     },
@@ -78,6 +79,7 @@ export async function getGroup(id: string) {
         include: { teacher: { select: { id: true, name: true } } },
       },
       students: {
+        where: { student: { deletedAt: null } },
         include: { student: { select: { id: true, firstName: true, lastName: true } } },
       },
     },

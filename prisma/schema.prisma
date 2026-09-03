@@ -59,6 +59,7 @@ model Group {
   id                String   @id @default(cuid())
   name              String
   description       String?
+  course            Int?
   homeroomTeacherId String?
   homeroomTeacher   User?    @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
   students          StudentGroup[]

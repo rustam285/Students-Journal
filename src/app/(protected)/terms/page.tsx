@@ -23,7 +23,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Calendar, Check } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Pencil, Trash2, Calendar, Check, GraduationCap, ArrowRight } from "lucide-react";
 import {
   getTerms,
   createTerm,
@@ -31,6 +38,11 @@ import {
   deleteTerm,
   setActiveTerm,
 } from "@/app/actions/terms";
+import {
+  getPromotionPreview,
+  setGroupCourse,
+  promoteAcademicYear,
+} from "@/app/actions/academic-year";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -41,6 +53,14 @@ interface Term {
   endDate: Date;
   isActive: boolean;
   _count: { lessons: number };
+}
+
+interface PromoGroup {
+  id: string;
+  name: string;
+  course: number | null;
+  studentsCount: number;
+  homeroomTeacher: string | null;
 }
 
 export default function TermsPage() {
@@ -55,8 +75,13 @@ export default function TermsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
+  const [promoGroups, setPromoGroups] = useState<PromoGroup[]>([]);
+  const [finalCourse, setFinalCourse] = useState<string>("4");
+  const [promoteConfirmOpen, setPromoteConfirmOpen] = useState(false);
+
   useEffect(() => {
     loadTerms();
+    loadPromotion();
   }, []);
 
   async function loadTerms() {
@@ -68,6 +93,41 @@ export default function TermsPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadPromotion() {
+    try {
+      const data = await getPromotionPreview();
+      setPromoGroups(data as PromoGroup[]);
+    } catch (error) {
+      console.error("Failed to load promotion preview:", error);
+    }
+  }
+
+  async function handleSetCourse(groupId: string, course: string) {
+    startTransition(async () => {
+      try {
+        await setGroupCourse(groupId, Number(course));
+        loadPromotion();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "Ошибка сохранения курса");
+      }
+    });
+  }
+
+  async function handlePromote() {
+    startTransition(async () => {
+      try {
+        const result = await promoteAcademicYear(Number(finalCourse));
+        setPromoteConfirmOpen(false);
+        alert(
+          `Готово! Переведено групп: ${result.promotedCount}, выпущено: ${result.graduatedCount} (${result.graduatedStudents} студентов отчислены)`
+        );
+        loadPromotion();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "Ошибка перевода");
+      }
+    });
   }
 
   function openCreate() {
@@ -291,6 +351,154 @@ export default function TermsPage() {
               )}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5" />
+            Переход на новый учебный год
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Переводит все группы на следующий курс. Группы выпускного курса скрываются из
+            системы вместе со студентами: их учётные записи удаляются (вход закрывается),
+            но история занятий и оценок сохраняется. Названия групп обновите вручную при
+            необходимости. Не забудьте создать и активировать новый учебный период выше.
+          </p>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <Label>Выпускной курс:</Label>
+            <Select value={finalCourse} onValueChange={setFinalCourse}>
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5, 6].map((c) => (
+                  <SelectItem key={c} value={c.toString()}>
+                    {c} курс
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Группа</TableHead>
+                <TableHead>Куратор</TableHead>
+                <TableHead>Студентов</TableHead>
+                <TableHead>Курс</TableHead>
+                <TableHead>При переводе</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {promoGroups.map((group) => {
+                const graduationCourse = Number(finalCourse);
+                const graduating =
+                  group.course !== null && group.course >= graduationCourse;
+                return (
+                  <TableRow key={group.id}>
+                    <TableCell className="font-medium">{group.name}</TableCell>
+                    <TableCell>{group.homeroomTeacher || "—"}</TableCell>
+                    <TableCell>{group.studentsCount}</TableCell>
+                    <TableCell>
+                      {group.course !== null ? (
+                        <Badge variant="outline">{group.course} курс</Badge>
+                      ) : (
+                        <Select
+                          value={undefined}
+                          onValueChange={(v) => handleSetCourse(group.id, v)}
+                        >
+                          <SelectTrigger className="w-[140px] h-8">
+                            <SelectValue placeholder="Укажите курс" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5, 6].map((c) => (
+                              <SelectItem key={c} value={c.toString()}>
+                                {c} курс
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {group.course === null ? (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      ) : graduating ? (
+                        <Badge variant="destructive">
+                          Выпуск ({group.studentsCount} студ.)
+                        </Badge>
+                      ) : (
+                        <span className="flex items-center gap-1 text-sm">
+                          <ArrowRight className="h-3 w-3" />
+                          {group.course + 1} курс
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {promoGroups.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    Нет активных групп
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+
+          <Dialog open={promoteConfirmOpen} onOpenChange={setPromoteConfirmOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="destructive"
+                disabled={isPending || promoGroups.some((g) => g.course === null)}
+              >
+                <GraduationCap className="mr-2 h-4 w-4" />
+                Перевести на новый учебный год
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Подтвердите переход на новый учебный год</DialogTitle>
+                <DialogDescription>
+                  Операцию нельзя отменить. Выпущенные студенты потеряют доступ к системе
+                  (их учётные записи будут удалены), история занятий и оценок сохранится.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 text-sm">
+                {promoGroups
+                  .filter((g) => g.course !== null)
+                  .map((g) => (
+                    <div key={g.id} className="flex items-center justify-between">
+                      <span>{g.name}</span>
+                      {g.course !== null && g.course >= Number(finalCourse) ? (
+                        <Badge variant="destructive">
+                          Выпуск ({g.studentsCount} студ.)
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          → {(g.course ?? 0) + 1} курс
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setPromoteConfirmOpen(false)}>
+                  Отмена
+                </Button>
+                <Button variant="destructive" onClick={handlePromote} disabled={isPending}>
+                  {isPending ? "Выполняется..." : "Перевести"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
     </div>
