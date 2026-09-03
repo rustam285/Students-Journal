@@ -30,6 +30,8 @@ interface SidebarProps {
     email?: string | null;
     role: string;
   };
+  className?: string;
+  onNavigate?: () => void;
 }
 
 const getNavItems = (role: string) => {
@@ -120,7 +122,7 @@ const getNavItems = (role: string) => {
   return items.filter((item) => item.roles.includes(role));
 };
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const navItems = getNavItems(user.role);
 
@@ -134,7 +136,7 @@ export function Sidebar({ user }: SidebarProps) {
     : "??";
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-card">
+    <div className={cn("flex h-full w-64 flex-col border-r bg-card", className)}>
       <div className="flex h-16 items-center gap-3 border-b px-6">
         <Avatar className="h-9 w-9">
           <AvatarFallback>{initials}</AvatarFallback>
@@ -154,6 +156,7 @@ export function Sidebar({ user }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
@@ -173,7 +176,10 @@ export function Sidebar({ user }: SidebarProps) {
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 text-muted-foreground"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => {
+            onNavigate?.();
+            signOut({ callbackUrl: "/login" });
+          }}
         >
           <LogOut className="h-5 w-5" />
           Выйти

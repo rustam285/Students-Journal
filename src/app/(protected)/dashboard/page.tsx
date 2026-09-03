@@ -210,7 +210,7 @@ export default function DashboardPage() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <Label>Период:</Label>
               <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -224,14 +224,14 @@ export default function DashboardPage() {
             </div>
 
             {period === "custom" && (
-              <div className="flex items-end gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">С</Label>
                   <Input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-[150px]"
+                    className="w-full sm:w-[150px]"
                   />
                 </div>
                 <div className="space-y-1">
@@ -240,7 +240,7 @@ export default function DashboardPage() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-[150px]"
+                    className="w-full sm:w-[150px]"
                   />
                 </div>
                 <Button onClick={handleApplyCustom} disabled={!startDate || !endDate}>

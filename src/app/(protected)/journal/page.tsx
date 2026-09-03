@@ -499,9 +499,9 @@ export default function JournalPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Журнал</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold">Журнал</h1>
+        <div className="flex flex-col sm:flex-row gap-2">
           <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" onClick={openExportDialog} disabled={!selectedGroup}>
@@ -548,7 +548,7 @@ export default function JournalPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="exportDateFrom">Период с</Label>
                     <Input
@@ -762,35 +762,39 @@ export default function JournalPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center gap-4">
-        <Label>Группа:</Label>
-        <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-          <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder="Выберите группу" />
-          </SelectTrigger>
-          <SelectContent>
-            {groups.map((group) => (
-              <SelectItem key={group.id} value={group.id}>
-                {group.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-1">
+          <Label>Группа:</Label>
+          <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+            <SelectTrigger className="w-full sm:w-[250px]">
+              <SelectValue placeholder="Выберите группу" />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((group) => (
+                <SelectItem key={group.id} value={group.id}>
+                  {group.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        <Label>Предмет:</Label>
-        <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-          <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder="Все предметы" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все предметы</SelectItem>
-            {subjects.map((subject) => (
-              <SelectItem key={subject.id} value={subject.id}>
-                {subject.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-1">
+          <Label>Предмет:</Label>
+          <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+            <SelectTrigger className="w-full sm:w-[250px]">
+              <SelectValue placeholder="Все предметы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все предметы</SelectItem>
+              {subjects.map((subject) => (
+                <SelectItem key={subject.id} value={subject.id}>
+                  {subject.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {editingLesson && (
@@ -925,10 +929,10 @@ export default function JournalPage() {
               {lessons.map((lesson) => (
                 <Card key={lesson.id} className="overflow-hidden">
                   <div
-                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 cursor-pointer hover:bg-muted/50"
                     onClick={() => setExpandedLesson(expandedLesson === lesson.id ? null : lesson.id)}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       <div>
                         <div className="font-medium">
                           {format(new Date(lesson.date), "d MMMM yyyy", { locale: ru })}
@@ -954,7 +958,7 @@ export default function JournalPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto shrink-0">
                       <Badge variant="outline">
                         {lesson.records.filter((r) => r.status === "PRESENT").length} / {lesson.records.length}
                       </Badge>

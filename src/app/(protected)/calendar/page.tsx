@@ -128,14 +128,14 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Календарь</h1>
+      <h1 className="text-2xl md:text-3xl font-bold">Календарь</h1>
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-stretch sm:self-auto">
           <Button variant="outline" size="icon" onClick={prevMonth}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="text-lg font-medium min-w-[200px] text-center">
+          <div className="text-lg font-medium flex-1 sm:min-w-[200px] text-center">
             {format(currentDate, "LLLL yyyy", { locale: ru })}
           </div>
           <Button variant="outline" size="icon" onClick={nextMonth}>
@@ -144,7 +144,7 @@ export default function CalendarPage() {
         </div>
 
         <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Все группы" />
           </SelectTrigger>
           <SelectContent>
@@ -164,7 +164,7 @@ export default function CalendarPage() {
             {weekDays.map((day) => (
               <div
                 key={day}
-                className="text-center text-sm font-medium text-muted-foreground py-2"
+                className="text-center text-xs sm:text-sm font-medium text-muted-foreground py-2"
               >
                 {day}
               </div>
@@ -181,7 +181,7 @@ export default function CalendarPage() {
                   onClick={() => handleDayClick(day)}
                   disabled={!hasLessons}
                   className={cn(
-                    "min-h-[80px] p-2 border rounded-lg text-left transition-colors",
+                    "min-h-[56px] sm:min-h-[80px] p-1 sm:p-2 border rounded-lg text-left transition-colors",
                     isCurrentMonth ? "bg-background" : "bg-muted/50",
                     hasLessons && "cursor-pointer hover:bg-accent",
                     !hasLessons && "cursor-default",
@@ -199,20 +199,25 @@ export default function CalendarPage() {
                     {format(day, "d")}
                   </div>
                   {hasLessons && (
-                    <div className="mt-1 space-y-1">
-                      {dayLessons.slice(0, 2).map((lesson) => (
-                        <div
-                          key={lesson.id}
-                          className="text-xs bg-primary/10 text-primary rounded px-1 py-0.5 truncate"
-                        >
-                          {lesson.lessonNumber}п. {lesson.group.name}
-                        </div>
-                      ))}
-                      {dayLessons.length > 2 && (
-                        <div className="text-xs text-muted-foreground">
-                          +{dayLessons.length - 2} ещё
-                        </div>
-                      )}
+                    <div className="mt-0.5 sm:mt-1 space-y-0.5 sm:space-y-1">
+                      <div className="hidden sm:block space-y-1">
+                        {dayLessons.slice(0, 2).map((lesson) => (
+                          <div
+                            key={lesson.id}
+                            className="text-xs bg-primary/10 text-primary rounded px-1 py-0.5 truncate"
+                          >
+                            {lesson.lessonNumber}п. {lesson.group.name}
+                          </div>
+                        ))}
+                        {dayLessons.length > 2 && (
+                          <div className="text-xs text-muted-foreground">
+                            +{dayLessons.length - 2} ещё
+                          </div>
+                        )}
+                      </div>
+                      <div className="sm:hidden text-[10px] leading-tight bg-primary/10 text-primary rounded px-1 py-0.5 font-medium">
+                        {dayLessons.length} зан.
+                      </div>
                     </div>
                   )}
                 </button>
@@ -249,7 +254,7 @@ export default function CalendarPage() {
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {lesson.records.map((record) => (
                       <div
                         key={record.id}

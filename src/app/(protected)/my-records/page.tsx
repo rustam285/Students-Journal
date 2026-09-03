@@ -132,11 +132,11 @@ export default function MyRecordsPage() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="flex gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <Label>Группа:</Label>
               <Select value={filterGroup} onValueChange={setFilterGroup}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -147,10 +147,10 @@ export default function MyRecordsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <Label>Статус:</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

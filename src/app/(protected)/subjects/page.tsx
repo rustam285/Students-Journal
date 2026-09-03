@@ -91,7 +91,7 @@ export default function SubjectsPage() {
           <CardTitle>Добавить предмет</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreate} className="flex gap-4">
+          <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 space-y-1">
               <Input
                 value={newName}
@@ -100,7 +100,7 @@ export default function SubjectsPage() {
               />
               {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="sm:shrink-0">
               <Plus className="mr-2 h-4 w-4" />
               {isPending ? "Добавление..." : "Добавить"}
             </Button>

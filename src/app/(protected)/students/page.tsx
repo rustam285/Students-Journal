@@ -263,10 +263,10 @@ export default function StudentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Студенты</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold">Студенты</h1>
         {isAdmin && (
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
             {selectedStudents.size > 0 && (
               <Button variant="secondary" onClick={handleBulkCreate} disabled={isPending}>
                 <UserPlus className="mr-2 h-4 w-4" />
@@ -288,7 +288,7 @@ export default function StudentsPage() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Фамилия</Label>
                     <Input
@@ -360,10 +360,10 @@ export default function StudentsPage() {
       </div>
 
       {isAdmin && (
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
           <Label>Фильтр по группе:</Label>
           <Select value={filterGroup} onValueChange={setFilterGroup}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -30,7 +30,7 @@ echo       Open in browser: http://localhost:3000
 echo       Stop: press Ctrl+C in this window.
 echo.
 
-call pnpm dev:all
+call pnpm prod
 
 echo.
 echo Application stopped. Data is stored in the pgdata folder.

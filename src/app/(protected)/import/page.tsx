@@ -286,7 +286,7 @@ export default function ImportPage() {
             </div>
           )}
 
-          <div className="flex items-end gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
             <div className="space-y-2 flex-1">
               <Label>Группа для импорта</Label>
               <Select value={selectedGroup} onValueChange={setSelectedGroup}>
