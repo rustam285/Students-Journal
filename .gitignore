@@ -14,11 +14,15 @@
 
 # production
 /build
+/.build-checksum
 
 # misc
 .DS_Store
 *.pem
 /.mimosa/
+
+# локальные артефакты редактора ZCode
+/.zcode/
 
 # debug
 npm-debug.log*

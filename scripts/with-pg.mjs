@@ -4,7 +4,7 @@
  * Использование:
  *   node scripts/with-pg.mjs --setup-only          # первичная настройка БД и выход
  *   node scripts/with-pg.mjs -- pnpm dev           # поднять БД и запустить команду
- *   node scripts/with-pg.mjs --prod                # поднять БД, сделать build и запустить start:all
+ *   node scripts/with-pg.mjs --prod                # поднять БД, собрать (если код менялся) и запустить прод
  *   node scripts/with-pg.mjs -- pnpm db:studio     # любая другая команда
  *
  * Что делает при запуске:
@@ -28,6 +28,9 @@
  *     другие установленные PostgreSQL-серверы не затрагиваются
  *   - если запущена вторая копия обёртки (например, dev + studio) — она
  *     подключается к уже работающему серверу и не останавливает его по завершении
+ *   - если порт 5433 занят PostgreSQL, запущенным НЕ из node_modules
+ *     (например, системная служба Windows, поднятая из этого же pgdata), —
+ *     обёртка использует его как внешний сервер: не убивает и не останавливает
  *
  * Если DATABASE_URL указывает на внешний сервер (не localhost:5433),
  * встроенный PostgreSQL не запускается — команда просто выполняется.
@@ -39,6 +42,7 @@ import { spawnSync, spawn } from "child_process";
 import { randomBytes } from "crypto";
 import net from "net";
 import EmbeddedPostgres from "embedded-postgres";
+import { isBuildUpToDate, markBuild } from "./build-fingerprint.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -135,6 +139,26 @@ function killEmbeddedPostgresProcesses() {
     killed = -1; // точное число недоступно
   }
   return killed;
+}
+
+// Сколько живых процессов postgres запущено из node_modules/embedded-postgres.
+// На Windows — точный подсчёт через PowerShell (тот же фильтр, что в
+// killEmbeddedPostgresProcesses, но без завершения процессов). Используется,
+// чтобы отличить «сирот» embedded-сервера от постороннего PostgreSQL-сервиса
+// на том же порту (например, службу Windows, зарегистрированную из pgdata).
+// На unix дешёвого аналога нет — консервативно считаем, что embedded есть.
+function countEmbeddedPostgresProcesses() {
+  if (process.platform !== "win32") return 1;
+  const script =
+    "(Get-CimInstance Win32_Process -Filter \"Name='postgres.exe'\" | " +
+    "Where-Object { ($_.ExecutablePath -like '*embedded-postgres*') -or ($_.CommandLine -like '*embedded-postgres*') } | " +
+    "Measure-Object).Count";
+  const encoded = Buffer.from(script, "utf16le").toString("base64");
+  const res = spawnSync("powershell", ["-NoProfile", "-EncodedCommand", encoded], {
+    encoding: "utf8",
+  });
+  if (res.status !== 0) return 1; // не удалось проверить — предполагаем худшее (прежнее поведение)
+  return Number((res.stdout || "").trim()) || 0;
 }
 
 // --- Загрузка .env (dependency-free) --------------------------------------
@@ -236,6 +260,12 @@ async function main() {
   if (portOpen && anotherWrapperAlive) {
     // порт открыт другой живой обёрткой — работаем с её сервером
     log(`PostgreSQL уже запущен (обёртка PID ${wrapperPid}) — использую его`);
+    ownsPostgres = false;
+  } else if (portOpen && countEmbeddedPostgresProcesses() === 0) {
+    // порт занят PostgreSQL, запущенным НЕ из node_modules/embedded-postgres:
+    // это внешний сервер (например, системная служба Windows из этого же pgdata).
+    // Используем его и не трогаем: не убиваем и не останавливаем по завершении
+    log(`Порт ${PG_PORT} занят внешним PostgreSQL-сервисом (не embedded) — использую его`);
     ownsPostgres = false;
   } else if (portOpen || postmasterAlive) {
     // сервер/остатки работают, но владелец мёртв — это «сироты» после креша
@@ -353,7 +383,7 @@ async function main() {
       log("Настройка завершена. Останавливаю PostgreSQL…");
       await pg.stop();
     } else {
-      log("Настройка завершена (сервером управляет другая обёртка — не останавливаю)");
+      log("Настройка завершена (сервером PostgreSQL управляет другой процесс — обёртка или служба, не останавливаю)");
     }
     log("Готово.");
     return;
@@ -361,14 +391,21 @@ async function main() {
 
   // --- НОВЫЙ БЛОК: Сборка проекта для прод-режима ---------------------------
   if (prodMode) {
-    log("▶ Запускаю сборку проекта (pnpm build)…");
-    try {
-      // Используем существующую функцию run (она синхронная)
-      run("pnpm", ["build"], "pnpm build");
-    } catch (e) {
-      console.error(`❌ Ошибка сборки: ${errText(e)}`);
-      if (ownsPostgres) await pg.stop();
-      process.exit(1);
+    if (isBuildUpToDate()) {
+      log("Код не менялся с последней успешной сборки — пропускаю pnpm build");
+    } else {
+      log("▶ Запускаю сборку проекта (pnpm build)…");
+      try {
+        // Используем существующую функцию run (она синхронная)
+        run("pnpm", ["build"], "pnpm build");
+        // postbuild-скрипт уже записал отпечаток, но продублируем —
+        // на случай, если pre/post-скрипты отключены настройками pnpm
+        markBuild();
+      } catch (e) {
+        console.error(`❌ Ошибка сборки: ${errText(e)}`);
+        if (ownsPostgres) await pg.stop();
+        process.exit(1);
+      }
     }
   }
 
@@ -389,7 +426,7 @@ async function main() {
         process.exit(code ?? 0);
       }
     } else {
-      log(`Команда завершена (код ${code}). Сервером управляет другая обёртка — не останавливаю.`);
+      log(`Команда завершена (код ${code}). Сервером PostgreSQL управляет другой процесс — обёртка или служба, не останавливаю.`);
       process.exit(code ?? 0);
     }
   });
