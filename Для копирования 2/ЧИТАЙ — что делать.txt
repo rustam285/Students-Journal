@@ -42,7 +42,14 @@ http://127.0.0.1:8100 — для прода подходит, в .env на се�
   src\components\fill-journal-dialog.tsx        -> ...\Students-Journal\src\components\fill-journal-dialog.tsx
   src\app\(protected)\journal\page.tsx          -> ...\Students-Journal\src\app\(protected)\journal\page.tsx
   src\app\(protected)\calendar\page.tsx         -> ...\Students-Journal\src\app\(protected)\calendar\page.tsx
+  scripts\with-pg.mjs                           -> ...\Students-Journal\scripts\with-pg.mjs
+  scripts\build-fingerprint.mjs                 -> ...\Students-Journal\scripts\build-fingerprint.mjs
+  package.json                                  -> ...\Students-Journal\package.json
   .env.example                                  -> ...\Students-Journal\.env.example
+
+Пакет САМОДОСТАТОЧЕН: файлы обёртки (with-pg.mjs, build-fingerprint.mjs,
+package.json) уже входят в него — не важно, устанавливалась ли ранее
+«Для копирования 1». Если ставилась — эти файлы просто совпадают.
 
 ВАЖНО: файл .env на сервере НЕ трогайте — его в этой папке нет, и он должен
 остаться со своими паролями. Менять в нём ничего не нужно.
