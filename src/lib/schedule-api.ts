@@ -241,6 +241,15 @@ function normalizeName(value: string): string {
   return (value || "").trim().toLowerCase().replace(/ё/g, "е");
 }
 
+/**
+ * Нормализованное название группы для сравнения: без регистра, без разницы е/ё,
+ * без лишних пробелов. Используется для автоподбора группы расписания
+ * по названию группы журнала и для сопоставления названий в расписании пар.
+ */
+export function normalizeTitle(value: string): string {
+  return normalizeName(value).replace(/\s+/g, " ");
+}
+
 /** «Фамилия Имя Отчество» / «Фамилия И.О.» → фамилия + инициалы (первые буквы слов после фамилии). */
 function parseNameParts(name: string): { surname: string; initials: string[] } {
   const parts = normalizeName(name)

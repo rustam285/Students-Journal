@@ -31,8 +31,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Plus, Save, Trash2, BookOpen, ChevronDown, ChevronUp, Download, Wand2 } from "lucide-react";
+import { Plus, Save, Trash2, BookOpen, ChevronDown, ChevronUp, Download } from "lucide-react";
+import { FillJournalDialog } from "@/components/fill-journal-dialog";
 import {
   getTeacherGroups,
   getGroupStudents,
@@ -42,11 +42,10 @@ import {
   updateLesson,
   deleteLesson,
 } from "@/app/actions/journal";
-import { getFillSetup, fillJournalFromSchedule } from "@/app/actions/schedule";
 import { getSubjects } from "@/app/actions/subjects";
 import { getJournalExport } from "@/app/actions/export";
 import { LESSON_SCHEDULE, getLessonLabel } from "@/lib/constants";
-import { format, startOfWeek, endOfWeek, addDays, addWeeks, addMonths } from "date-fns";
+import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
 interface Group {
@@ -85,20 +84,6 @@ interface Lesson {
 interface Subject {
   id: string;
   name: string;
-}
-
-interface FillSetup {
-  scheduleTeacherId: number | null;
-  scheduleGroupId: number | null;
-  teachers: { id: number; name: string }[];
-  groups: { id: number; title: string }[];
-}
-
-interface FillResult {
-  created: number;
-  skipped: number;
-  subjectsCreated: number;
-  scheduleLessonsFound: number;
 }
 
 export default function JournalPage() {
@@ -144,15 +129,6 @@ export default function JournalPage() {
   const [exportSubject, setExportSubject] = useState<string>("all");
   const [exportDateFrom, setExportDateFrom] = useState("");
   const [exportDateTo, setExportDateTo] = useState("");
-
-  const [fillDialogOpen, setFillDialogOpen] = useState(false);
-  const [fillSetup, setFillSetup] = useState<FillSetup | null>(null);
-  const [fillTeacherId, setFillTeacherId] = useState<string>("");
-  const [fillGroupId, setFillGroupId] = useState<string>("");
-  const [fillSingleDate, setFillSingleDate] = useState("");
-  const [fillDateFrom, setFillDateFrom] = useState("");
-  const [fillDateTo, setFillDateTo] = useState("");
-  const [fillResult, setFillResult] = useState<FillResult | null>(null);
 
   const loadGroups = useCallback(async () => {
     try {
@@ -216,58 +192,6 @@ export default function JournalPage() {
     setExportDateFrom("");
     setExportDateTo("");
     setExportDialogOpen(true);
-  }
-
-  // Неделя в журнале начинается с понедельника
-  const WEEK_OPTS = { weekStartsOn: 1 } as const;
-  const fmtYmd = (d: Date) => format(d, "yyyy-MM-dd");
-
-  async function openFillDialog() {
-    if (!selectedGroup) return;
-    setFillResult(null);
-    setFillSetup(null);
-    setFillDialogOpen(true);
-    try {
-      const setup = await getFillSetup(selectedGroup);
-      setFillSetup(setup);
-      setFillTeacherId(setup.scheduleTeacherId ? String(setup.scheduleTeacherId) : "");
-      setFillGroupId(setup.scheduleGroupId ? String(setup.scheduleGroupId) : "");
-      const today = fmtYmd(new Date());
-      setFillSingleDate(today);
-      setFillDateFrom(today);
-      setFillDateTo(fmtYmd(addWeeks(new Date(), 1)));
-    } catch (error) {
-      setFillDialogOpen(false);
-      alert(error instanceof Error ? error.message : "Не удалось получить данные расписания");
-    }
-  }
-
-  async function runFill(dateFrom: string, dateTo: string) {
-    if (!selectedGroup) return;
-    if (!fillTeacherId || !fillGroupId) {
-      alert("Выберите преподавателя и группу в расписании");
-      return;
-    }
-    if (!dateFrom || !dateTo || dateFrom > dateTo) {
-      alert("Укажите корректный период заполнения");
-      return;
-    }
-
-    startTransition(async () => {
-      try {
-        const result = await fillJournalFromSchedule({
-          groupId: selectedGroup,
-          scheduleTeacherId: Number(fillTeacherId),
-          scheduleGroupId: Number(fillGroupId),
-          dateFrom,
-          dateTo,
-        });
-        setFillResult(result);
-        loadLessons();
-      } catch (error) {
-        alert(error instanceof Error ? error.message : "Ошибка автозаполнения");
-      }
-    });
   }
 
   function openCreateDialog() {
@@ -579,194 +503,11 @@ export default function JournalPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-bold">Журнал</h1>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Dialog open={fillDialogOpen} onOpenChange={setFillDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="secondary" onClick={openFillDialog} disabled={!selectedGroup}>
-                <Wand2 className="mr-2 h-4 w-4" />
-                Заполнить
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Автозаполнение журнала</DialogTitle>
-                <DialogDescription>
-                  Занятия создаются из расписания сайта ТФ ЧелГУ — только ваши пары в выбранной
-                  группе. Посещаемость выставляется «Присутствует», существующие занятия
-                  не дублируются.
-                </DialogDescription>
-              </DialogHeader>
-              {!fillSetup ? (
-                <div className="flex items-center justify-center py-8 text-muted-foreground">
-                  Загрузка данных расписания...
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Преподаватель в расписании</Label>
-                      <Select value={fillTeacherId} onValueChange={setFillTeacherId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {fillSetup.teachers.map((t) => (
-                            <SelectItem key={t.id} value={String(t.id)}>
-                              {t.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Группа в расписании</Label>
-                      <Select value={fillGroupId} onValueChange={setFillGroupId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {fillSetup.groups.map((g) => (
-                            <SelectItem key={g.id} value={String(g.id)}>
-                              {g.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={() => runFill(fmtYmd(new Date()), fmtYmd(new Date()))}
-                    >
-                      Заполнить на сегодня
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={() =>
-                        runFill(
-                          fmtYmd(startOfWeek(new Date(), WEEK_OPTS)),
-                          fmtYmd(endOfWeek(new Date(), WEEK_OPTS))
-                        )
-                      }
-                    >
-                      Заполнить на эту неделю
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={() => {
-                        const tomorrow = addDays(new Date(), 1);
-                        runFill(fmtYmd(tomorrow), fmtYmd(tomorrow));
-                      }}
-                    >
-                      Заполнить на завтра
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={() => {
-                        const nextWeek = addWeeks(new Date(), 1);
-                        runFill(
-                          fmtYmd(startOfWeek(nextWeek, WEEK_OPTS)),
-                          fmtYmd(endOfWeek(nextWeek, WEEK_OPTS))
-                        );
-                      }}
-                    >
-                      Заполнить на следующую неделю
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        disabled={isPending || !fillSingleDate}
-                        onClick={() => runFill(fillSingleDate, fillSingleDate)}
-                      >
-                        Заполнить на дату
-                      </Button>
-                      <Input
-                        type="date"
-                        className="w-[150px]"
-                        value={fillSingleDate}
-                        onChange={(e) => setFillSingleDate(e.target.value)}
-                      />
-                    </div>
-                    <Button
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={() =>
-                        runFill(
-                          fmtYmd(startOfWeek(new Date(), WEEK_OPTS)),
-                          fmtYmd(endOfWeek(addWeeks(new Date(), 1), WEEK_OPTS))
-                        )
-                      }
-                    >
-                      Заполнить на две недели
-                    </Button>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    disabled={isPending}
-                    onClick={() => runFill(fmtYmd(new Date()), fmtYmd(addMonths(new Date(), 1)))}
-                  >
-                    Заполнить на месяц (с сегодня)
-                  </Button>
-
-                  <div className="space-y-2">
-                    <Label>Произвольный период</Label>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        disabled={isPending || !fillDateFrom || !fillDateTo}
-                        onClick={() => runFill(fillDateFrom, fillDateTo)}
-                      >
-                        Заполнить с даты по дату
-                      </Button>
-                      <Input
-                        type="date"
-                        className="w-[150px]"
-                        value={fillDateFrom}
-                        onChange={(e) => setFillDateFrom(e.target.value)}
-                      />
-                      <Input
-                        type="date"
-                        className="w-[150px]"
-                        value={fillDateTo}
-                        onChange={(e) => setFillDateTo(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {fillResult && (
-                    <div className="rounded-md bg-muted p-3 text-sm space-y-1">
-                      <div>Готово. Создано занятий: {fillResult.created}.</div>
-                      {fillResult.skipped > 0 && (
-                        <div>Уже существовало (пропущено): {fillResult.skipped}.</div>
-                      )}
-                      {fillResult.subjectsCreated > 0 && (
-                        <div>Создано новых предметов: {fillResult.subjectsCreated}.</div>
-                      )}
-                      {fillResult.created === 0 && fillResult.skipped === 0 && (
-                        <div>
-                          В расписании нет ваших пар этой группы за выбранный период —
-                          занятия не созданы.
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
+          <FillJournalDialog
+            defaultGroupId={selectedGroup}
+            onFilled={loadLessons}
+            disabled={!selectedGroup}
+          />
           <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" onClick={openExportDialog} disabled={!selectedGroup}>

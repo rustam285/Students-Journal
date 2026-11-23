@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { FillJournalDialog } from "@/components/fill-journal-dialog";
 import { getLessonsByMonth, getTeacherGroups } from "@/app/actions/journal";
 import { getLessonLabel } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -156,6 +157,11 @@ export default function CalendarPage() {
             ))}
           </SelectContent>
         </Select>
+
+        <FillJournalDialog
+          defaultGroupId={selectedGroup === "all" ? undefined : selectedGroup}
+          onFilled={loadLessons}
+        />
       </div>
 
       <Card>
