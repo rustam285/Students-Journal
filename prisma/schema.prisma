@@ -41,6 +41,7 @@ model User {
   subjects            Subject[]
   groupAccessRequests GroupAccessRequest[]
   auditLogs           AuditLog[]
+  scheduleTeacherId   Int?      // id преподавателя на сайте расписания (автозаполнение журнала)
   createdAt           DateTime  @default(now())
   deletedAt           DateTime?
   @@index([email])
@@ -67,6 +68,7 @@ model Group {
   lessons           Lesson[]
   additionalTeachers TeacherGroup[]
   accessRequests    GroupAccessRequest[]
+  scheduleGroupId   Int?      // id группы на сайте расписания (автозаполнение журнала)
   deletedAt         DateTime?
 }
 
